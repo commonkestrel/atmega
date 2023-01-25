@@ -27,7 +27,8 @@ pub enum PINB {
     PINB5 = 5,
     PINB6 = 6,
     PINB7 = 7,
-};
+}
+
 pub const DDRB:   *mut u8 = 0x24 as *mut u8;
 pub const PORTB:  *mut u8 = 0x25 as *mut u8;
 pub const PINC:   *mut u8 = 0x26 as *mut u8;
