@@ -1,5 +1,5 @@
 use core::ptr::read_volatile;
-use crate::bits::{ self, DDRB, PORTB, PINB, DDRC, PORTC, PINC, DDRD, PORTD, PIND };
+use crate::registers::{ self, DDRB, PORTB, PINB, DDRC, PORTC, PINC, DDRD, PORTD, PIND, Address };
 
 #[derive(Debug, Clone)]
 pub enum Pin {
@@ -78,10 +78,10 @@ pub fn pin_mode(pin: Pin, value: PinMode) {
         Port::D(bit) => (bit, DDRD),
     };
     match value {
-        PinMode::INPUT => unsafe { bits::operate(address, |x| bits::clear(x, bit)); },
-        PinMode::OUTPUT => unsafe { bits::operate(address, |x| bits::set(x, bit)); },
+        PinMode::INPUT => unsafe { registers::operate(address, |x| registers::clear(x, bit)); },
+        PinMode::OUTPUT => unsafe { registers::operate(address, |x| registers::set(x, bit)); },
         PinMode::INPUT_PULLUP => {
-            unsafe { bits::operate(address, |x| bits::clear(x, bit)) };
+            unsafe { registers::operate(address, |x| registers::clear(x, bit)) };
             digital_write(pin, HIGH);
         },
     }
@@ -95,16 +95,27 @@ pub fn digital_write(pin: Pin, value: bool) {
         Port::D(bit) => (bit, PORTD),
     };
 
-    unsafe { bits::operate(address, |x| bits::set_value(x, bit, value)); }
+    unsafe { registers::operate(address, |x| registers::set_value(x, bit, value)); }
 }
 
 pub fn digital_read(pin: Pin) -> bool {
     let port: Port = pin.into();
     let (bit, address) = match port {
-        Port::B(bit) => (bit, PINB),
+        Port::B(bit) => (bit, PINB::address()),
         Port::C(bit) => (bit, PINC),
         Port::D(bit) => (bit, PIND),
     };
     let value = unsafe { read_volatile(address) };
-    bits::read(value, bit)
+    registers::read(value, bit)
+}
+
+pub fn digital_toggle(pin: Pin) {
+    let port: Port = pin.into();
+    let (bit, address) = match port {
+        Port::B(bit) => (bit, PORTB),
+        Port::C(bit) => (bit, PORTC),
+        Port::D(bit) => (bit, PORTD),
+    };
+
+    unsafe { registers::operate(address, |x| registers::toggle(x, bit)); }
 }

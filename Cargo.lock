@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
-name = "arduino-rs"
+name = "atmega"
 version = "0.1.0"
+
+[[package]]
+name = "atmega328p-rs"
+version = "0.1.0"
+dependencies = [
+ "atmega",
+]

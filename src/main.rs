@@ -2,21 +2,12 @@
 #![no_main]
 #![feature(lang_items)]
 
-pub mod pin;
-pub mod bits;
-pub mod prelude;
-
-use core::panic::PanicInfo;
+use atmega::prelude::*;
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
-    loop {}
+    loop {
+        digital_toggle(Pin::D10);
+    }
 }
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}

@@ -1,10 +1,33 @@
 use core::ptr::{ write_volatile, read_volatile };
 
+pub trait Address {
+    fn address() -> *mut u8;
+}
+
+macro_rules! impl_address {
+    ($t: ty, $addr: expr) => {
+        impl Address for $t {
+            fn address() -> *mut u8 {
+                $addr as *mut u8
+            }
+        }
+    };
+}
+
 pub const ADCSRA: *mut u8 = 0x7A as *mut u8;
 pub const ADCSRB: *mut u8 = 0x7B as *mut u8;
 pub const ADMUX:  *mut u8 = 0x7C as *mut u8;
 
-pub const PINB:   *mut u8 = 0x23 as *mut u8;
+pub enum PINB {
+    PINB0 = 0,
+    PINB1 = 1,
+    PINB2 = 2,
+    PINB3 = 3,
+    PINB4 = 4,
+    PINB5 = 5,
+    PINB6 = 6,
+    PINB7 = 7,
+};
 pub const DDRB:   *mut u8 = 0x24 as *mut u8;
 pub const PORTB:  *mut u8 = 0x25 as *mut u8;
 pub const PINC:   *mut u8 = 0x26 as *mut u8;
@@ -28,6 +51,7 @@ pub const OCR0B:  *mut u8 = 0x48 as *mut u8;
 
 pub const TIMSK0: *mut u8 = 0x6E as *mut u8;
 
+impl_address!(PINB, 0x23);
 
 pub fn toggle(original: u8, bit: u8) -> u8 {
     original ^ (1 << bit)
