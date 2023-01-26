@@ -7,4 +7,4 @@ Build with `cargo build --release`, and upload the resulting `.elf` file at `./a
 If the dev build (`cargo build`) fails with `error: ran out of registers during register allocation`, try increasing the `opt-level` for `[profile.dev]` to 3.
 Advice on flashing to a real chip can be founr [here](https://book.avr-rust.com/004-flashing-a-crate-to-chip.html)
 
-The [ATmega328p Datasheet]([ATmega328P_Datasheet](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7810-Automotive-Microcontrollers-ATmega328P_Datasheet.pdf)) and the [ATmega328 Register Reference](https://arbaranwal.github.io/tutorial/2017/06/23/atmega328-register-reference.html) by [arbaranwal](https://github.com/arbaranwal) was a huge help for register addresses and functions.
+The [ATmega328p Datasheet](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7810-Automotive-Microcontrollers-ATmega328P_Datasheet.pdf) and the [ATmega328 Register Reference](https://arbaranwal.github.io/tutorial/2017/06/23/atmega328-register-reference.html) by [arbaranwal](https://github.com/arbaranwal) was a huge help for register addresses and functions.
