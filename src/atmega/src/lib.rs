@@ -5,6 +5,8 @@ pub mod pins;
 pub mod registers;
 pub mod prelude;
 
+use core::panic::PanicInfo;
+
 #[macro_export]
 macro_rules! run {
     ($setup: ident, $loop: ident) => {
@@ -15,3 +17,11 @@ macro_rules! run {
         }
     }
 }
+
+#[panic_handler]
+pub fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
+#[lang = "eh_personality"]
+pub extern "C" fn eh_personality() {}
