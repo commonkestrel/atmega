@@ -1,5 +1,4 @@
-use core::ptr::read_volatile;
-use crate::registers::{ self, DDRB, PORTB, PINB, DDRC, PORTC, PINC, DDRD, PORTD, PIND, Address };
+use crate::registers::{ PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD };
 
 #[derive(Debug, Clone)]
 pub enum Pin {
@@ -25,38 +24,169 @@ pub enum Pin {
     A5,
 }
 
-impl From<Pin> for Port {
-    fn from(value: Pin) -> Port {
+impl From<Pin> for Registers {
+    fn from(value: Pin) -> Registers {
         match value {
-            Pin::D0  => Port::D(0),
-            Pin::D1  => Port::D(1),
-            Pin::D2  => Port::D(2),
-            Pin::D3  => Port::D(3),
-            Pin::D4  => Port::D(4),
-            Pin::D5  => Port::D(5),
-            Pin::D6  => Port::D(6),
-            Pin::D7  => Port::D(7),
-            Pin::D8  => Port::B(0),
-            Pin::D9  => Port::B(1),
-            Pin::D10 => Port::B(2),
-            Pin::D11 => Port::B(3),
-            Pin::D12 => Port::B(4),
-            Pin::D13 => Port::B(5),
-            Pin::A0  => Port::C(0),
-            Pin::A1  => Port::C(1),
-            Pin::A2  => Port::C(2),
-            Pin::A3  => Port::C(3),
-            Pin::A4  => Port::C(4),
-            Pin::A5  => Port::C(5),
+            Pin::D0  => Registers::D(0),
+            Pin::D1  => Registers::D(1),
+            Pin::D2  => Registers::D(2),
+            Pin::D3  => Registers::D(3),
+            Pin::D4  => Registers::D(4),
+            Pin::D5  => Registers::D(5),
+            Pin::D6  => Registers::D(6),
+            Pin::D7  => Registers::D(7),
+            Pin::D8  => Registers::B(0),
+            Pin::D9  => Registers::B(1),
+            Pin::D10 => Registers::B(2),
+            Pin::D11 => Registers::B(3),
+            Pin::D12 => Registers::B(4),
+            Pin::D13 => Registers::B(5),
+            Pin::A0  => Registers::C(0),
+            Pin::A1  => Registers::C(1),
+            Pin::A2  => Registers::C(2),
+            Pin::A3  => Registers::C(3),
+            Pin::A4  => Registers::C(4),
+            Pin::A5  => Registers::C(5),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-enum Port {
+enum Registers {
     B(u8),
     C(u8),
     D(u8),
+}
+
+impl Registers {
+    fn pinx(&self) -> PINx {
+        match self {
+            Self::B(offset) => {
+                match offset {
+                    0 => PINx::B(PINB::PINB0),
+                    1 => PINx::B(PINB::PINB1),
+                    2 => PINx::B(PINB::PINB2),
+                    3 => PINx::B(PINB::PINB3),
+                    4 => PINx::B(PINB::PINB4),
+                    5 => PINx::B(PINB::PINB5),
+                    6 => PINx::B(PINB::PINB6),
+                    7 => PINx::B(PINB::PINB7),
+                    _ => unreachable!(),
+                }
+            },
+            Self::C(offset) => {
+                match offset {
+                    0 => PINx::C(PINC::PINC0),
+                    1 => PINx::C(PINC::PINC1),
+                    2 => PINx::C(PINC::PINC2),
+                    3 => PINx::C(PINC::PINC3),
+                    4 => PINx::C(PINC::PINC4),
+                    5 => PINx::C(PINC::PINC5),
+                    6 => PINx::C(PINC::PINC6),
+                    _ => unreachable!(),
+                }
+            },
+            Self::D(offset) => {
+                match offset {
+                    0 => PINx::D(PIND::PIND0),
+                    1 => PINx::D(PIND::PIND1),
+                    2 => PINx::D(PIND::PIND2),
+                    3 => PINx::D(PIND::PIND3),
+                    4 => PINx::D(PIND::PIND4),
+                    5 => PINx::D(PIND::PIND5),
+                    6 => PINx::D(PIND::PIND6),
+                    7 => PINx::D(PIND::PIND7),
+                    _ => unreachable!(),
+                }
+            },
+        }
+    }
+
+    fn ddrx(&self) -> DDRx {
+        match self {
+            Self::B(offset) => {
+                match offset {
+                    0 => DDRx::B(DDRB::DDRB0),
+                    1 => DDRx::B(DDRB::DDRB1),
+                    2 => DDRx::B(DDRB::DDRB2),
+                    3 => DDRx::B(DDRB::DDRB3),
+                    4 => DDRx::B(DDRB::DDRB4),
+                    5 => DDRx::B(DDRB::DDRB5),
+                    6 => DDRx::B(DDRB::DDRB6),
+                    7 => DDRx::B(DDRB::DDRB7),
+                    _ => unreachable!(),
+                }
+            },
+            Self::C(offset) => {
+                match offset {
+                    0 => DDRx::C(DDRC::DDRC0),
+                    1 => DDRx::C(DDRC::DDRC1),
+                    2 => DDRx::C(DDRC::DDRC2),
+                    3 => DDRx::C(DDRC::DDRC3),
+                    4 => DDRx::C(DDRC::DDRC4),
+                    5 => DDRx::C(DDRC::DDRC5),
+                    6 => DDRx::C(DDRC::DDRC6),
+                    _ => unreachable!(),
+                }
+            },
+            Self::D(offset) => {
+                match offset {
+                    0 => DDRx::D(DDRD::DDRD0),
+                    1 => DDRx::D(DDRD::DDRD1),
+                    2 => DDRx::D(DDRD::DDRD2),
+                    3 => DDRx::D(DDRD::DDRD3),
+                    4 => DDRx::D(DDRD::DDRD4),
+                    5 => DDRx::D(DDRD::DDRD5),
+                    6 => DDRx::D(DDRD::DDRD6),
+                    7 => DDRx::D(DDRD::DDRD7),
+                    _ => unreachable!(),
+                }
+            },
+        }
+    }
+
+    fn portx(&self) -> PORTx {
+        match self {
+            Self::B(offset) => {
+                match offset {
+                    0 => PORTx::B(PORTB::PORTB0),
+                    1 => PORTx::B(PORTB::PORTB1),
+                    2 => PORTx::B(PORTB::PORTB2),
+                    3 => PORTx::B(PORTB::PORTB3),
+                    4 => PORTx::B(PORTB::PORTB4),
+                    5 => PORTx::B(PORTB::PORTB5),
+                    6 => PORTx::B(PORTB::PORTB6),
+                    7 => PORTx::B(PORTB::PORTB7),
+                    _ => unreachable!(),
+                }
+            },
+            Self::C(offset) => {
+                match offset {
+                    0 => PORTx::C(PORTC::PORTC0),
+                    1 => PORTx::C(PORTC::PORTC1),
+                    2 => PORTx::C(PORTC::PORTC2),
+                    3 => PORTx::C(PORTC::PORTC3),
+                    4 => PORTx::C(PORTC::PORTC4),
+                    5 => PORTx::C(PORTC::PORTC5),
+                    6 => PORTx::C(PORTC::PORTC6),
+                    _ => unreachable!(),
+                }
+            },
+            Self::D(offset) => {
+                match offset {
+                    0 => PORTx::D(PORTD::PORTD0),
+                    1 => PORTx::D(PORTD::PORTD1),
+                    2 => PORTx::D(PORTD::PORTD2),
+                    3 => PORTx::D(PORTD::PORTD3),
+                    4 => PORTx::D(PORTD::PORTD4),
+                    5 => PORTx::D(PORTD::PORTD5),
+                    6 => PORTx::D(PORTD::PORTD6),
+                    7 => PORTx::D(PORTD::PORTD7),
+                    _ => unreachable!(),
+                }
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -71,51 +201,28 @@ pub const HIGH: bool = true;
 pub const LOW: bool = false;
 
 pub fn pin_mode(pin: Pin, value: PinMode) {
-    let port: Port = pin.clone().into();
-    let (bit, address) = match port {
-        Port::B(bit) => (bit, DDRB),
-        Port::C(bit) => (bit, DDRC),
-        Port::D(bit) => (bit, DDRD),
-    };
+    let register = Registers::from(pin.clone()).ddrx();
     match value {
-        PinMode::INPUT => unsafe { registers::operate(address, |x| registers::clear(x, bit)); },
-        PinMode::OUTPUT => unsafe { registers::operate(address, |x| registers::set(x, bit)); },
+        PinMode::INPUT => unsafe { register.clear(); },
+        PinMode::OUTPUT => unsafe { register.set(); },
         PinMode::INPUT_PULLUP => {
-            unsafe { registers::operate(address, |x| registers::clear(x, bit)) };
+            unsafe { register.clear(); }
             digital_write(pin, HIGH);
         },
     }
 }
 
 pub fn digital_write(pin: Pin, value: bool) {
-    let port: Port = pin.into();
-    let (bit, address) = match port {
-        Port::B(bit) => (bit, PORTB),
-        Port::C(bit) => (bit, PORTC),
-        Port::D(bit) => (bit, PORTD),
-    };
-
-    unsafe { registers::operate(address, |x| registers::set_value(x, bit, value)); }
+    let register = Registers::from(pin).portx();
+    unsafe { register.set_value(value); }
 }
 
 pub fn digital_read(pin: Pin) -> bool {
-    let port: Port = pin.into();
-    let (bit, address) = match port {
-        Port::B(bit) => (bit, PINB::address()),
-        Port::C(bit) => (bit, PINC),
-        Port::D(bit) => (bit, PIND),
-    };
-    let value = unsafe { read_volatile(address) };
-    registers::read(value, bit)
+    let register = Registers::from(pin).pinx();
+    unsafe { register.read() }
 }
 
 pub fn digital_toggle(pin: Pin) {
-    let port: Port = pin.into();
-    let (bit, address) = match port {
-        Port::B(bit) => (bit, PORTB),
-        Port::C(bit) => (bit, PORTC),
-        Port::D(bit) => (bit, PORTD),
-    };
-
-    unsafe { registers::operate(address, |x| registers::toggle(x, bit)); }
+    let register = Registers::from(pin).portx();
+    unsafe { register.toggle(); }
 }
