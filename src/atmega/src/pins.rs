@@ -24,6 +24,33 @@ pub enum Pin {
     A5,
 }
 
+impl Pin {
+    fn analog(&self) {
+        match self {
+            Self::D0 => true,
+            Self::D1 => true,
+            Self::D2 => true,
+            Self::D3 => true,
+            Self::D4 => true,
+            Self::D5 => true,
+            Self::D6 => true,
+            Self::D7 => true,
+            Self::D8 => true,
+            Self::D9 => true,
+            Self::D10 => true,
+            Self::D11 => true,
+            Self::D12 => true,
+            Self::D13 => true,
+            Self::A0 => false,
+            Self::A1 => false,
+            Self::A2 => false,
+            Self::A3 => false,
+            Self::A4 => false,
+            Self::A5 => false,
+        }
+    }
+}
+
 impl From<Pin> for Registers {
     fn from(value: Pin) -> Registers {
         match value {
@@ -226,3 +253,14 @@ pub fn digital_toggle(pin: Pin) {
     let register = Registers::from(pin).portx();
     unsafe { register.toggle(); }
 }
+
+pub fn analog_read(pin: Pin) -> u8 {
+    if pin.digital() {
+        let value = digital_read(pin);
+        return if value { 255 } else { 0 };
+    }
+}
+
+pub fn analog_write(pin: Pin, value: u8) {
+    
+} 

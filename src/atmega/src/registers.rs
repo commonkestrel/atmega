@@ -54,6 +54,15 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
             self.clear();
         }
     }
+
+    unsafe fn until<F: Fn(u8) -> u8>(check: F) {
+        loop {
+            let value = Self::read();
+            if check(value) {
+                return;
+            }
+        }
+    }
 }
 
 macro_rules! register {
