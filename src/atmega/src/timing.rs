@@ -1,7 +1,8 @@
+include!(concat!(env!("OUT_DIR"), "/constants.rs")); // Used to import environment variables as values other than &'static str
+
 use crate::registers::{ self, Register, TCNT1L, TCNT1H, TCCR1B, TIFR1 };
 use core::ptr::{ read_volatile, write_volatile };
 
-const CPU_FREQUENCY: &'static str = core::env!("AVR_CPU_FREQUENCY_HZ");
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000
 
