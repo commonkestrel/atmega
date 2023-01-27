@@ -367,15 +367,7 @@ pub enum TCNT0 {
 }
 
 #[derive(Clone, Copy)]
-pub enum TIFR1_READ {
-    TOV1  = 0,
-    OCF1A = 1,
-    OCF1B = 2,
-    ICF1  = 5,
-}
-
-#[derive(Clone, Copy)]
-pub enum TIFR1_WRITE {
+pub enum TIFR1 {
     TOV1  = 0,
     OCF1A = 1,
     OCF1B = 2,
@@ -401,6 +393,30 @@ pub enum TCCR1B {
     WGM13 = 4,
     ICES1 = 6,
     ICNC1 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum TCNT1L {
+    TCNT1L0 = 0,
+    TCNT1L1 = 1,
+    TCNT1L2 = 3,
+    TCNT1L3 = 3,
+    TCNT1L4 = 4,
+    TCNT1L5 = 5,
+    TCNT1L6 = 6,
+    TCNT1L7 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum TCNT1H {
+    TCNT1H0 = 0,
+    TCNT1H1 = 1,
+    TCNT1H2 = 3,
+    TCNT1H3 = 3,
+    TCNT1H4 = 4,
+    TCNT1H5 = 5,
+    TCNT1H6 = 6,
+    TCNT1H7 = 7,
 }
 
 /// Output Compare Register A
@@ -457,10 +473,11 @@ register!(
     TCCR0A[0x44],
     TCCR0B[0x45],
     TCNT0[0x46],
-    TIFR1_READ[0x16],
-    TIFR1_WRITE[0x36],
+    TIFR1[0x16],
     TCCR1A[0x80],
     TCCR1B[0x81],
+    TCNT1L[0x84],
+    TCNT1H[0x85],
     OCR0A[0x47],
     OCR0B[0x48],
     TIMSK0[0x6E],
