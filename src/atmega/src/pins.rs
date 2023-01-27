@@ -51,6 +51,47 @@ impl Pin {
     }
 }
 
+impl From<u8> for Pin {
+    fn from(value: u8) -> Self {
+        match value {
+            0  => Self::D0,
+            1  => Self::D1,
+            2  => Self::D2,
+            3  => Self::D3,
+            4  => Self::D4,
+            5  => Self::D5,
+            6  => Self::D6,
+            7  => Self::D7,
+            8  => Self::D8,
+            9  => Self::D9,
+            10 => Self::D10,
+            11 => Self::D11,
+            12 => Self::D12,
+            13 => Self::D13,
+            14 => Self::A0,
+            15 => Self::A1,
+            16 => Self::A2,
+            17 => Self::A3,
+            18 => Self::A4,
+            19 => Self::A5,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl core::fmt::Display for Pin {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "")
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Registers {
+    B(u8),
+    C(u8),
+    D(u8),
+}
+
 impl From<Pin> for Registers {
     fn from(value: Pin) -> Registers {
         match value {
@@ -76,13 +117,6 @@ impl From<Pin> for Registers {
             Pin::A5  => Registers::C(5),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-enum Registers {
-    B(u8),
-    C(u8),
-    D(u8),
 }
 
 impl Registers {
@@ -230,7 +264,10 @@ pub const LOW: bool = false;
 pub fn pin_mode(pin: Pin, value: PinMode) {
     let register = Registers::from(pin.clone()).ddrx();
     match value {
-        PinMode::INPUT => unsafe { register.clear(); },
+        PinMode::INPUT => unsafe { 
+            register.clear();
+            digital_write(pin, LOW);
+        },
         PinMode::OUTPUT => unsafe { register.set(); },
         PinMode::INPUT_PULLUP => {
             unsafe { register.clear(); }
@@ -283,6 +320,6 @@ pub fn analog_read(pin: Pin) -> u8 {
     todo!()
 }
 
-pub fn analog_write(pin: Pin, value: u8) {
+pub fn analog_write(_pin: Pin, _value: u8) {
     todo!()
 } 

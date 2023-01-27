@@ -16,6 +16,6 @@ fn setup() {
 /// Called in a loop indefinitly.
 /// Equivalent to the `loop` function in the Arduino language.
 fn runner() {
-    let button = digital_read(Pin::D7);
+    let button = !digital_read(Pin::D7);
     digital_write(Pin::D8, button);
 }

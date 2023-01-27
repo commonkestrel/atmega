@@ -1,9 +1,10 @@
 #![no_std]
-#![feature(lang_items)]
+#![feature(lang_items, asm_experimental_arch)]
 
 pub mod pins;
 pub mod registers;
 pub mod prelude;
+pub mod timing;
 
 use core::panic::PanicInfo;
 

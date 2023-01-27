@@ -362,6 +362,27 @@ pub enum TCNT0 {
     TCNT07 = 7,
 }
 
+#[derive(Clone, Copy)]
+pub enum TCCR1A {
+    WGM10  = 0,
+    WGM11  = 1,
+    COM1B0 = 4,
+    COM1B1 = 5,
+    COM1A0 = 6,
+    COM1A1 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum TCCR1B {
+    CS10  = 0,
+    CS11  = 1,
+    CS12  = 2,
+    WGM12 = 3,
+    WGM13 = 4,
+    ICES1 = 6,
+    ICNC1 = 7,
+}
+
 /// Output Compare Register A
 #[derive(Clone, Copy)]
 pub enum OCR0A {
@@ -416,6 +437,8 @@ register!(
     TCCR0A[0x44],
     TCCR0B[0x45],
     TCNT0[0x46],
+    TCCR1A[0x80],
+    TCCR1B[0x81],
     OCR0A[0x47],
     OCR0B[0x48],
     TIMSK0[0x6E],
