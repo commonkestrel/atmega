@@ -55,7 +55,7 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
         }
     }
 
-    unsafe fn until<F: Fn(u8) -> u8>(check: F) {
+    unsafe fn until<F: Fn(u8) -> bool>(check: F) {
         loop {
             let value = Self::read();
             if check(value) {

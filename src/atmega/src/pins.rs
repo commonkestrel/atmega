@@ -1,4 +1,4 @@
-use crate::registers::{ PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX };
+use crate::registers::{ Register, PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX };
 
 #[derive(Debug, Clone)]
 pub enum Pin {
@@ -25,7 +25,7 @@ pub enum Pin {
 }
 
 impl Pin {
-    fn analog(&self) {
+    fn analog(&self) -> bool {
         match self {
             Self::D0 => true,
             Self::D1 => true,
@@ -255,30 +255,34 @@ pub fn digital_toggle(pin: Pin) {
 }
 
 pub fn analog_read(pin: Pin) -> u8 {
-    if pin.digital() {
+    if !pin.analog() {
         let value = digital_read(pin);
         return if value { 255 } else { 0 };
     }
 
     // Get MUX address
-    let (MUX2, MUX1, MUX0) match pin {
+    #[allow(non_snake_case)]
+    let (MUX2, MUX1, MUX0) = match pin {
         Pin::A0 => (false, false, false),
         Pin::A1 => (false, false, true),
         Pin::A2 => (false, true,  false),
         Pin::A3 => (false, true,  true),
         Pin::A4 => (true,  false, false),
         Pin::A5 => (true,  false, true),
-        Pin::A6 => (true,  true,  false),
         _ => unreachable!(),
     };
 
     // Set Analog Channel Selection Bits to address to the given analog pin
-    ADMUX::MUX0.set_value(MUX0);
-    ADMUX::MUX1.set_value(MUX1);
-    ADMUX::MUX2.set_value(MUX2);
-    ADMUX::MUX3.set_value(false);
+    unsafe {
+        ADMUX::MUX0.set_value(MUX0);
+        ADMUX::MUX1.set_value(MUX1);
+        ADMUX::MUX2.set_value(MUX2);
+        ADMUX::MUX3.set_value(false);
+    }
+
+    todo!()
 }
 
 pub fn analog_write(pin: Pin, value: u8) {
-    
+    todo!()
 } 
