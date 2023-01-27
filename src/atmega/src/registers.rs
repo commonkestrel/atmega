@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types)]
 use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 
 pub trait Register: Sized + Clone + Copy + Into<u8>
@@ -23,7 +24,7 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
     
     #[inline(always)]
-    unsafe fn operate<F: Fn(u8) -> u8>(&self, operator: F) {
+    unsafe fn operate<F: Fn(u8) -> u8>(operator: F) {
         Self::write(operator(Self::read()))
     }
 
@@ -65,6 +66,9 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
 }
 
+/// Initialize a type as a Register.
+/// 
+/// Syntax: `register!(<type>[<address>],);`
 macro_rules! register {
     ($($t:ty[$addr:expr],)*) => {
         $(
@@ -81,7 +85,7 @@ macro_rules! register {
             }
             impl ops::BitAndAssign<u8> for $t {
                 fn bitand_assign(&mut self, rhs: u8) {
-                    unsafe { self.operate(|val| val & rhs); }
+                    unsafe { Self::operate(|val| val & rhs); }
                 }
             }
             impl ops::BitOr<u8> for $t {
@@ -92,7 +96,7 @@ macro_rules! register {
             }
             impl ops::BitOrAssign<u8> for $t {
                 fn bitor_assign(&mut self, rhs: u8) {
-                    unsafe { self.operate(|val| val | rhs) }
+                    unsafe { Self::operate(|val| val | rhs) }
                 }
             }
             impl ops::BitXor<u8> for $t {
@@ -103,7 +107,7 @@ macro_rules! register {
             }
             impl ops::BitXorAssign<u8> for $t {
                 fn bitxor_assign(&mut self, rhs: u8) {
-                    unsafe { self.operate(|val| val ^ rhs) }
+                    unsafe { Self::operate(|val| val ^ rhs) }
                 }
             }
             impl cmp::PartialEq<u8> for $t {
@@ -363,6 +367,22 @@ pub enum TCNT0 {
 }
 
 #[derive(Clone, Copy)]
+pub enum TIFR1_READ {
+    TOV1  = 0,
+    OCF1A = 1,
+    OCF1B = 2,
+    ICF1  = 5,
+}
+
+#[derive(Clone, Copy)]
+pub enum TIFR1_WRITE {
+    TOV1  = 0,
+    OCF1A = 1,
+    OCF1B = 2,
+    ICF1  = 5,
+}
+
+#[derive(Clone, Copy)]
 pub enum TCCR1A {
     WGM10  = 0,
     WGM11  = 1,
@@ -437,6 +457,8 @@ register!(
     TCCR0A[0x44],
     TCCR0B[0x45],
     TCNT0[0x46],
+    TIFR1_READ[0x16],
+    TIFR1_WRITE[0x36],
     TCCR1A[0x80],
     TCCR1B[0x81],
     OCR0A[0x47],
