@@ -145,6 +145,18 @@ macro_rules! register {
     };
 }
 
+#[derive(Clone, Copy)]
+pub enum SREG {
+    C = 0,
+    Z = 1,
+    N = 2,
+    V = 3,
+    S = 4,
+    H = 5,
+    T = 6,
+    I = 7,
+}
+
 /// ADC Control and Status Register A
 #[derive(Clone, Copy)]
 pub enum ADCSRA {
@@ -375,6 +387,14 @@ pub enum TIFR1 {
 }
 
 #[derive(Clone, Copy)]
+pub enum TIMSK1 {
+    TOIE1  = 0,
+    OCIE1A = 1,
+    OCIE1B = 2,
+    ICIE1  = 5,
+}
+
+#[derive(Clone, Copy)]
 pub enum TCCR1A {
     WGM10  = 0,
     WGM11  = 1,
@@ -399,7 +419,7 @@ pub enum TCCR1B {
 pub enum TCNT1L {
     TCNT1L0 = 0,
     TCNT1L1 = 1,
-    TCNT1L2 = 3,
+    TCNT1L2 = 2,
     TCNT1L3 = 3,
     TCNT1L4 = 4,
     TCNT1L5 = 5,
@@ -411,7 +431,7 @@ pub enum TCNT1L {
 pub enum TCNT1H {
     TCNT1H0 = 0,
     TCNT1H1 = 1,
-    TCNT1H2 = 3,
+    TCNT1H2 = 2,
     TCNT1H3 = 3,
     TCNT1H4 = 4,
     TCNT1H5 = 5,
@@ -448,12 +468,13 @@ pub enum OCR0B {
 /// Interrupt Mask Register
 #[derive(Clone, Copy)]
 pub enum TIMSK0 {
-    TOIE  = 0,
+    TOIE0 = 0,
     OCIEA = 1,
     OCIEB = 2,
 }
 
 register!(
+    SREG[0x3F],
     ADCSRA[0x7A], 
     ADCSRB[0x7B], 
     ADMUX[0x7C], 
@@ -473,7 +494,8 @@ register!(
     TCCR0A[0x44],
     TCCR0B[0x45],
     TCNT0[0x46],
-    TIFR1[0x16],
+    TIFR1[0x36],
+    TIMSK1[0x6F],
     TCCR1A[0x80],
     TCCR1B[0x81],
     TCNT1L[0x84],

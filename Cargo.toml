@@ -16,4 +16,4 @@ opt-level = "z"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-atmega = { path = "./src/atmega"}
+atmega = { path = "./src/atmega" }
