@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(abi_avr_interrupt)]
 
 use atmega::prelude::*;
 
@@ -32,7 +31,7 @@ fn runner(state: &mut State) {
     //digital_toggle(Pin::D8);
     //delay(1000);
 
-    if millis() > 1000 {
+    if millis() > 10000 {
         digital_write(Pin::D9, LOW);
     }
 }
