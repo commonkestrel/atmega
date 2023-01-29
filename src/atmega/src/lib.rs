@@ -12,16 +12,20 @@ pub use atmega_macros::interrupt;
 
 use core::panic::PanicInfo;
 
-pub trait SaveState {
-    fn new() -> Self;
+#[doc(hidden)]
+pub fn init() {
+    #[cfg(feature = "millis")]
+    timer::begin_systick();
 }
 
+/// Takes two arguments, `setup()` and `run()`
 #[macro_export]
 macro_rules! run {
     ($setup: ident, $loop: ident) => {
         #[no_mangle]
         pub extern "C" fn main() -> ! {
-            $crate::timer::begin_systick();
+            $crate::init();
+            
             let mut state = $setup();
             loop{ $loop(&mut state) }
         }
