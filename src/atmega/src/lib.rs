@@ -5,7 +5,10 @@ pub mod pins;
 pub mod registers;
 pub mod prelude;
 pub mod timer;
-pub mod mutex;
+pub mod volatile;
+pub mod interrupt;
+#[cfg(feature = "interrupt-macro")]
+pub use atmega_macros::interrupt;
 
 use core::panic::PanicInfo;
 
