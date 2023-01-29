@@ -1,8 +1,8 @@
 // Partialy adapted from https://github.com/rust-embedded/cortex-m-rt/blob/master/macros/src/lib.rs
 
-use proc_macro2::{Span, Ident};
-use syn::{spanned::Spanned, LitStr, Lit, Visibility, VisPublic, token::Pub};
 use proc_macro::TokenStream;
+use proc_macro2::{Span, Ident};
+use syn::{LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub};
 
 #[repr(u8)]
 #[allow(non_camel_case_types)]
@@ -77,6 +77,10 @@ impl Interrupt {
     }
 }
 
+/// Exports the function as the matching interrupt handler
+/// 
+/// # Requirements
+/// Requires the 'abi_avr_interrupt" feature, which can be enabled by adding #![feature(abi_avr_interrupt)] to the top of the file
 #[proc_macro_attribute]
 pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be called on a function");
