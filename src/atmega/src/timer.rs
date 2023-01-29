@@ -3,13 +3,11 @@
 include!(concat!(env!("OUT_DIR"), "/constants.rs")); 
 
 use core::arch::asm;
-use crate::mutex::Mutex;
+use crate::volatile::Volatile;
 use crate::registers::{ Register, TCNT1L, TCNT1H, TCCR1B, TIFR1, TCCR0A, TCCR0B, TIMSK0, OCR0A };
 
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
-
-static SYSTICK: Mutex<u32> = Mutex::new(0);
 
 /* struct Mutex<T> {
     data: T,
@@ -104,10 +102,12 @@ pub fn delay(ms: u64) {
     delay_cycles(ms*CPU_FREQUENCY/MILLIS);
 }
 
+#[cfg(feature = "millis")]
+static SYSTICK: Volatile<u32> = Volatile::new(0);
+
+#[cfg(feature = "millis")]
 pub fn begin_systick() {
-    let mut guard = SYSTICK.lock();
-    *guard = 0;
-    guard.unlock();
+    SYSTICK.write(0);
     unsafe {        
         // Write maximum of 250 to Output Compare for CTC mode in order to evenly divide into millis
         OCR0A::write(249);
@@ -126,14 +126,16 @@ pub fn begin_systick() {
     }
 }
 
+/// The total milliseconds since system initialization
 #[inline]
+#[cfg(feature = "millis")]
 pub fn millis() -> u32 {
-    let guard = SYSTICK.lock();
-    *guard
+    SYSTICK.read()
 }
 
+#[cfg(feature = "millis")]
+#[allow(non_snake_case)]
 #[export_name = "__vector_14"]
 pub unsafe extern "avr-interrupt" fn TIMER0_COMPA() {
-    let mut guard = SYSTICK.lock();
-    *guard += 1;
+    SYSTICK.operate(|val| val + 1);
 }
