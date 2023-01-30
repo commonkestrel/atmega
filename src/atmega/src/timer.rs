@@ -1,8 +1,5 @@
-// Used to import environment variables as values other than &'static str
-// The CPU_FREQUENCY constant is imported this way
-include!(concat!(env!("OUT_DIR"), "/constants.rs")); 
-
 use core::arch::asm;
+use crate::CPU_FREQUENCY;
 use crate::volatile::Volatile;
 use crate::registers::{ Register, TCNT1L, TCNT1H, TCCR1B, TIFR1, TCCR0A, TCCR0B, TIMSK0, OCR0A };
 

@@ -17,8 +17,11 @@ fn main() {
                 16_000_000
             }
         },
-        None => 16_000_000,
+        None => {
+            println!("AVR_CPU_FREQUENCY_HZ not found, defaulting to 16MHz");
+            16_000_000
+        },
     };
-    write!(&mut f, "const CPU_FREQUENCY: u64 = {};", frequency).expect("Failed to write file");
+    write!(&mut f, "pub const CPU_FREQUENCY: u64 = {};", frequency).expect("Failed to write file");
     println!("cargo:rerun-if-env-changed=AVR_CPU_FREQUENCY_HZ");
 }

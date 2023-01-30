@@ -473,6 +473,74 @@ pub enum TIMSK0 {
     OCIEB = 2,
 }
 
+#[derive(Clone, Copy)]
+pub enum UBRR0L {
+    UBRR00 = 0,
+    UBRR01 = 1,
+    UBRR02 = 2,
+    UBRR03 = 3,
+    UBRR04 = 4,
+    UBRR05 = 5,
+    UBRR06 = 6,
+    UBRR07 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum UBRR0H {
+    UBRR08  = 0,
+    UBRR09  = 1,
+    UBRR010 = 2,
+    UBRR011 = 3,
+}
+
+#[derive(Clone, Copy)]
+pub enum UCSR0A {
+    MPCM0 = 0,
+    U2X0  = 1,
+    UPE0  = 2,
+    DOR0  = 3,
+    FE0   = 4,
+    UDRE0 = 5,
+    TXC0  = 6,
+    RXC0  = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum UCSR0B {
+    TXB80  = 0,
+    RXB80  = 1,
+    UCSZ02 = 2,
+    TXEN0  = 3,
+    RXEN0  = 4,
+    UDRIE0 = 5,
+    TXCIE0 = 6,
+    RXCIE0 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum UCSR0C {
+    UCPOL0  = 0,
+    UCSZ00  = 1,
+    UCSZ01  = 2,
+    USBS0   = 3,
+    UPM00   = 4,
+    UPM01   = 5,
+    UMSEL00 = 6,
+    UMSEL01 = 7
+}
+
+#[derive(Clone, Copy)]
+pub enum UDR0 {
+    UDR00 = 0,
+    UDR01 = 1,
+    UDR02 = 2,
+    UDR03 = 3,
+    UDR04 = 4,
+    UDR05 = 5,
+    UDR06 = 6,
+    UDR07 = 7,
+}
+
 register!(
     SREG[0x3F],
     ADCSRA[0x7A], 
@@ -503,6 +571,12 @@ register!(
     OCR0A[0x47],
     OCR0B[0x48],
     TIMSK0[0x6E],
+    UBRR0L[0xC4],
+    UBRR0H[0xC5],
+    UCSR0A[0xC0],
+    UCSR0B[0xC1],
+    UCSR0C[0xC2],
+    UDR0[0xC6],
 );
 
 /// Port B maps to pins `D13`-`D8`
