@@ -1,10 +1,15 @@
 use crate::CPU_FREQUENCY;
 use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
+use core::fmt::Write;
 use core::hint::spin_loop;
 
 pub struct Serial {}
 
 impl Serial {
+    pub const fn new() -> Self {
+        Serial {}
+    }
+
     pub fn begin(baud:u32) {
         let ubrr = ((CPU_FREQUENCY / (16*baud) as u64)-1) as u16;
         unsafe {
@@ -36,11 +41,20 @@ impl Serial {
         unsafe { UCSR0A::UDRE0.read_bit() }
     }
 
-    pub fn transmit(byte: u8) {
+    pub fn transmit(&self, byte: u8) {
         while !Self::ready() {
             spin_loop();
         }
         unsafe { UDR0::write(byte) };
+    }
+}
+
+impl Write for Serial {
+    fn write_str(&mut self, s: &str) -> Result<(), core::fmt::Error> {
+        for c in s.chars() {
+            self.transmit(c as u8);
+        }
+        Ok(())
     }
 }
 
