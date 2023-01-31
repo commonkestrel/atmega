@@ -108,6 +108,7 @@ pub fn millis() -> u32 {
     SYSTICK.read()
 }
 
+#[inline(always)]
 #[cfg(feature = "millis")]
 #[allow(non_snake_case)]
 #[export_name = "__vector_14"]
