@@ -6,24 +6,6 @@ use crate::registers::{ Register, TCNT1L, TCNT1H, TCCR1B, TIFR1, TCCR0A, TCCR0B,
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
 
-/* struct Mutex<T> {
-    data: T,
-    mut_lock: AtomicBool,
-}
-
-impl<T> Mutex<T> {
-    pub const fn new(data: T) -> Self {
-        Mutex {
-            data,
-            mut_lock: AtomicBool::new(false),
-        }
-    }
-
-    pub fn lock(&self) {
-
-    }
-} */
-
 pub enum Prescale {
     P1 = 1,
     P8 = 2,
