@@ -75,18 +75,14 @@ pub fn delay_cycles(cycles: u64) {
 
     for _ in 0..of_required {
         unsafe { 
-            while TIFR1::read() & 0b0000_0001 == 0 {
-                core::hint::spin_loop();
-            } 
+            while TIFR1::read() & 0b0000_0001 == 0 {} 
             TIFR1::write(0b0000_0001);
         }
     }
 
     let remaining = (scaled_cycles%core::u16::MAX as u64) as u16;
 
-    while read_timer1() < remaining {
-        core::hint::spin_loop();
-    }
+    while read_timer1() < remaining {}
 }
 
 /// Sleep for a given number of microseconds (1/1,000,000 of a second)
