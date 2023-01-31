@@ -1,6 +1,6 @@
 use crate::registers::{ Register, PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX, ADCSRA, ADCL, ADCH };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Pin {
     D0,
     D1,
@@ -28,6 +28,12 @@ impl Pin {
     fn is_digital(&self) -> bool {
         // When converted to a number Pins 0-13 are digital, 14-19 are analog
         (*self as u8) <= 13
+    }
+
+    fn is_pwm(&self) -> bool {
+        let num = *self as u8;
+        // Pins 3, 5, 6, 8, 10, and 11 are PWM pins
+        (num == 3) || (num == 5) || (num == 6) || (num == 9) || (num == 10) || (num == 11)
     }
 }
 
@@ -317,13 +323,17 @@ pub fn analog_read(pin: Pin) -> u16 {
     }
 }
 
-/// Sets the given analog pin to the given value between 0-1023
-pub fn analog_write(pin: Pin, value: u16) {
-    if pin.is_digital() {
-        // Rounds value if pin is digital
-        digital_write(pin, value >= 512);
-        return;
+/// Sets the given PWM pin to the given value between 0-255.
+/// If the given pin does not have PWM this will call `digital_write` instead.
+///
+/// # Warning
+/// If the `millis` feature is enabled the PWM in Pin 9 will be disabled.
+/// This is because `analog_write` uses Timer 1 COMPA, which millis uses for interrupts.
+pub fn analog_write(pin: Pin, value: u8) {
+    if !pin.is_pwm() || (cfg!(feature = "millis") && pin == Pin::D9) {
+        // Round to high or low if the pin does not have PWM
+        digital_write(pin, value >= 128)
     }
 
-    todo!()
+
 } 
