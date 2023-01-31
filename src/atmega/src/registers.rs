@@ -541,6 +541,16 @@ pub enum UDR0 {
     UDR07 = 7,
 }
 
+#[derive(Clone, Copy)]
+pub enum ADCL {
+
+}
+
+#[derive(Clone, Copy)]
+pub enum ADCH {
+    
+}
+
 register!(
     SREG[0x3F],
     ADCSRA[0x7A], 
@@ -577,6 +587,8 @@ register!(
     UCSR0B[0xC1],
     UCSR0C[0xC2],
     UDR0[0xC6],
+    ADCL[0x78],
+    ADCH[0x79],
 );
 
 /// Port B maps to pins `D13`-`D8`

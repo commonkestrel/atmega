@@ -1,6 +1,6 @@
-use crate::registers::{ Register, PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX };
+use crate::registers::{ Register, PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX, ADCSRA, ADCL, ADCH };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Pin {
     D0,
     D1,
@@ -25,29 +25,9 @@ pub enum Pin {
 }
 
 impl Pin {
-    fn analog(&self) -> bool {
-        match self {
-            Self::D0 => true,
-            Self::D1 => true,
-            Self::D2 => true,
-            Self::D3 => true,
-            Self::D4 => true,
-            Self::D5 => true,
-            Self::D6 => true,
-            Self::D7 => true,
-            Self::D8 => true,
-            Self::D9 => true,
-            Self::D10 => true,
-            Self::D11 => true,
-            Self::D12 => true,
-            Self::D13 => true,
-            Self::A0 => false,
-            Self::A1 => false,
-            Self::A2 => false,
-            Self::A3 => false,
-            Self::A4 => false,
-            Self::A5 => false,
-        }
+    fn is_digital(&self) -> bool {
+        // When converted to a number Pins 0-13 are digital, 14-19 are analog
+        (*self as u8) <= 13
     }
 }
 
@@ -291,10 +271,13 @@ pub fn digital_toggle(pin: Pin) {
     unsafe { register.toggle(); }
 }
 
-pub fn analog_read(pin: Pin) -> u8 {
-    if !pin.analog() {
+/// Returns the state of the given analog pin
+/// Values are from 0-1023
+/// A digital pin will return 0 if LOW or 1023 if HIGH
+pub fn analog_read(pin: Pin) -> u16 {
+    if pin.is_digital() {
         let value = digital_read(pin);
-        return if value { 255 } else { 0 };
+        return if value { 1023 } else { 0 };
     }
 
     // Get MUX address
@@ -309,17 +292,37 @@ pub fn analog_read(pin: Pin) -> u8 {
         _ => unreachable!(),
     };
 
-    // Set Analog Channel Selection Bits to address to the given analog pin
+    
     unsafe {
+        // Set Analog Channel Selection Bits to address to the given analog pin
         ADMUX::MUX0.set_value(MUX0);
         ADMUX::MUX1.set_value(MUX1);
         ADMUX::MUX2.set_value(MUX2);
         ADMUX::MUX3.set_value(false);
-    }
+        
+        // Starts the analog to digital conversion
+        ADCSRA::ADSC.set();
 
-    todo!()
+        // ADSC is automatically zeroed when the conversion finishes
+        while ADCSRA::ADSC.read_bit() {}
+
+        // Sets the presentation so that the lower 8 bits are stored in ADCL
+        ADMUX::ADLAR.clear();
+        
+        let low_bits = ADCL::read();
+        let high_bits = ADCH::read();
+
+        // Conbines low and high bits into single u16
+        (low_bits as u16) | (high_bits as u16)
+    }
 }
 
-pub fn analog_write(_pin: Pin, _value: u8) {
-    todo!()
+/// Sets the given analog pin to the given value between 0-1023
+pub fn analog_write(pin: Pin, value: u16) {
+    if pin.is_digital() {
+        // Rounds value if pin is digital
+        digital_write(pin, value >= 512);
+        return;
+    }
+
 } 
