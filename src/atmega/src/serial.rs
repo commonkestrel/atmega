@@ -1,7 +1,6 @@
 use crate::CPU_FREQUENCY;
 use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
 use core::fmt::Write;
-use core::hint::spin_loop;
 
 pub struct Serial {}
 
@@ -41,24 +40,21 @@ impl Serial {
         unsafe { UCSR0A::UDRE0.read_bit() }
     }
 
-    pub fn transmit(&self, byte: u8) {
-        while !Self::ready() {
-            spin_loop();
-        }
+    pub fn transmit(byte: u8) {
+        while !Self::ready() {}
         unsafe { UDR0::write(byte) };
     }
 }
 
 impl Write for Serial {
-    fn write_str(&mut self, s: &str) -> Result<(), core::fmt::Error> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
-            self.transmit(c as u8);
+            Self::transmit(c as u8);
         }
         Ok(())
     }
 }
 
-/*
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::serial::_print(format_args!($($arg)*)));
@@ -72,7 +68,5 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
-    use core::fmt::Write;
-    Serial{}.write_fmt(args).unwrap();
+    Serial::new().write_fmt(args).unwrap();
 }
-*/
