@@ -1,12 +1,13 @@
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 
 use atmega::prelude::*;
 
 run!(setup, run);
 
 struct State {
-    prev_millis: u32,
+    prev_millis: u64,
 }
 
 /// Called once.

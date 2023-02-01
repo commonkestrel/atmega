@@ -22,7 +22,7 @@ fn timer1_init(prescale: Prescale) {
 
         // Sets prescale to the given scale
         // and the other bits (ICNC1, ICNES and WGM bits) to 0
-        TCCR1B::write(prescale as u8);
+        TCCR0B::write(prescale as u8);
 
         // Set timer to 0
         // In order to write to 16 bit registers on the ATmega328p
@@ -67,51 +67,53 @@ pub fn delay_cycles(cycles: u64) {
     while read_timer1() < remaining {}
 }
 
-/// Sleep for a given number of microseconds (1/1,000,000 of a second)
+/// Sleep for a given number of microseconds.
+/// Only accurate to ~8µs
 pub fn delay_micros(us: u64) {
     delay_cycles(us*CPU_FREQUENCY/MICROS);
 }
 
-/// Sleep for a given number of milliseconds (1/1,000 of a second)
+/// Sleep for a given number of milliseconds.
 pub fn delay(ms: u64) {
     delay_cycles(ms*CPU_FREQUENCY/MILLIS);
 }
 
 #[cfg(feature = "millis")]
-static SYSTICK: Volatile<u32> = Volatile::new(0);
+static SYSTICK: Volatile<u64> = Volatile::new(0);
 
 #[cfg(feature = "millis")]
 pub fn begin_systick() {
-    SYSTICK.write(0);
-    unsafe {        
-        // Write maximum of 250 to Output Compare for CTC mode in order to evenly divide into millis
-        OCR0A::write(249);
-
-        TCCR0A::WGM01.set();
+    SYSTICK.write(0);   
+    unsafe {
+        // Set to mode 3, Fast PWM with the top at 0xFF (Page 88 of the ATmega328p docs)
         TCCR0A::COM0A0.set();
+        TCCR0A::WGM00.set();
+        TCCR0A::WGM01.clear();
 
         // Set prescale for TIMER0 to 64
         TCCR0B::CS00.set();
         TCCR0B::CS01.set();
         TCCR0B::CS02.clear();
 
-        TIMSK0::OCIEA.set();
-
+        TIMSK0::TOIE0.set();
+        
+        // Enable interrupts
         asm!("sei");
     }
 }
 
-/// The total milliseconds since system initialization
+/// The total milliseconds since system startup
 #[inline]
 #[cfg(feature = "millis")]
-pub fn millis() -> u32 {
+pub fn millis() -> u64 {
     SYSTICK.read()
 }
 
-#[inline(always)]
 #[cfg(feature = "millis")]
+#[doc(hidden)]
+#[inline(always)]
 #[allow(non_snake_case)]
-#[export_name = "__vector_14"]
-pub unsafe extern "avr-interrupt" fn TIMER0_COMPA() {
+#[export_name = "__vector_13"]
+pub unsafe extern "avr-interrupt" fn TIMER1_OVF() {
     SYSTICK.operate(|val| val + 1);
 }
