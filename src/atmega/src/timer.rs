@@ -1,36 +1,10 @@
 use core::arch::asm;
 use crate::CPU_FREQUENCY;
 use crate::volatile::Volatile;
-use crate::registers::{ Register, TCNT1L, TCNT1H, TCCR1B, TIFR1, TCCR0A, TCCR0B, TIMSK0, OCR0A };
+use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TCCR0A, TCCR0B, TIMSK0, TCNT0 };
 
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
-
-pub enum Prescale {
-    P1 = 1,
-    P8 = 2,
-    P64 = 3,
-    P256 = 4,
-    P1024 = 5,
-}
-
-fn timer1_init(prescale: Prescale) {
-    unsafe {
-        // Disable TIMER1 OVF interrupt
-        // This prevents TOV1 from being cleared automatically
-        // TIMSK1::TOIE1.clear();
-
-        // Sets prescale to the given scale
-        // and the other bits (ICNC1, ICNES and WGM bits) to 0
-        TCCR0B::write(prescale as u8);
-
-        // Set timer to 0
-        // In order to write to 16 bit registers on the ATmega328p
-        // you need to write the high byte before the low byte
-        TCNT1H::write(0b0000_0000);
-        TCNT1L::write(0b0000_0000);
-    }
-}
 
 pub fn read_timer1() -> u16 {
     let (high_byte, low_byte) = unsafe {
@@ -43,32 +17,47 @@ pub fn read_timer1() -> u16 {
     ((high_byte as u16) << 8) | low_byte as u16 // Use both bytes to construct a u16
 }
 
-/// Sleep for the specified number of clock cycles
-/// Has a precision of 8 cycles
+/// Sleep for the specified number of clock cycles.
+/// Has a precision of 8 cycles.
 pub fn delay_cycles(cycles: u64) {
-    // Set the timer prescale at 8, since at 16MHz this means the timer increments twice every μs
-    timer1_init(Prescale::P8);
+    // Timer prescaler is set to 8, which means the timer increments every 8 clock cycles
+    let scaled_cycles = (cycles)/(2*8); 
     
-    // Timer is prescaled by 8, which means every 8 ticks the timer increments
-    let scaled_cycles = cycles/8; 
-    
-    // The TCNT1 counter is a 16 bit register, so we need to wait for overflow interrupts if the number of cycles is more than the u16 max
-    let of_required = scaled_cycles/core::u16::MAX as u64;
+    let individual = (scaled_cycles%256) as u8;
+    let initial = unsafe{ TCNT0::read() };
 
+    // Checks if (the value already in TIMER0 + the individual ticks needed to delay) are greater than the max value of TIMER0
+    let (of_required, remaining) = if initial.checked_add(individual).is_none() {
+        ((scaled_cycles/256)+1, individual-initial)
+    } else {
+        (scaled_cycles/256, individual)
+    };
+
+    // Disable TIMER0 OVF interrupt
+    // This prevents TOV0 from being cleared automatically
+    unsafe { TIMSK0::TOIE0.clear(); }
+    
+    // The TCNT1 counter is an 8 bit register, so we need to wait for overflow interrupts if the number of cycles is more than 256 (2^8)
     for _ in 0..of_required {
         unsafe { 
-            while TIFR1::read() & 0b0000_0001 == 0 {} 
-            TIFR1::write(0b0000_0001);
+            while !TIFR0::TOV0.read_bit() {}
+            // To clear a bit in the TIFR you must write it high
+            TIFR0::write(0b0000_0001);
         }
+        // Update SYSTICK since the TIMER0 overflow interrupt is captured by this loop
+        #[cfg(feature = "millis")]
+        SYSTICK.operate(|val| val + 1);
     }
 
-    let remaining = (scaled_cycles%core::u16::MAX as u64) as u16;
+    // Renable TIMER0 OVF interrupt
+    // This allows systick to update
+    unsafe { TIMSK0::TOIE0.set(); }
 
-    while read_timer1() < remaining {}
+    // Wait for the value 
+    unsafe { while TCNT0::read() <= remaining {} }
 }
 
 /// Sleep for a given number of microseconds.
-/// Only accurate to ~8µs
 pub fn delay_micros(us: u64) {
     delay_cycles(us*CPU_FREQUENCY/MICROS);
 }
@@ -81,20 +70,21 @@ pub fn delay(ms: u64) {
 #[cfg(feature = "millis")]
 static SYSTICK: Volatile<u64> = Volatile::new(0);
 
-#[cfg(feature = "millis")]
-pub fn begin_systick() {
+#[cfg(any(feature = "millis", feature = "delay"))]
+pub fn timer0_init() {
     SYSTICK.write(0);   
     unsafe {
         // Set to mode 3, Fast PWM with the top at 0xFF (Page 88 of the ATmega328p docs)
-        TCCR0A::COM0A0.set();
         TCCR0A::WGM00.set();
         TCCR0A::WGM01.clear();
+        TCCR0B::WGM02.clear();
 
-        // Set prescale for TIMER0 to 64
-        TCCR0B::CS00.set();
+        // Set prescale for TIMER0 to 8
+        TCCR0B::CS00.clear();
         TCCR0B::CS01.set();
         TCCR0B::CS02.clear();
 
+        // Enable TIMER0_OVF interrupt
         TIMSK0::TOIE0.set();
         
         // Enable interrupts
@@ -106,14 +96,14 @@ pub fn begin_systick() {
 #[inline]
 #[cfg(feature = "millis")]
 pub fn millis() -> u64 {
-    SYSTICK.read()
+    SYSTICK.read() * 32 / 125
 }
 
 #[cfg(feature = "millis")]
 #[doc(hidden)]
 #[inline(always)]
 #[allow(non_snake_case)]
-#[export_name = "__vector_13"]
-pub unsafe extern "avr-interrupt" fn TIMER1_OVF() {
+#[export_name = "__vector_16"]
+pub unsafe extern "avr-interrupt" fn TIMER0_OVF() {
     SYSTICK.operate(|val| val + 1);
 }
