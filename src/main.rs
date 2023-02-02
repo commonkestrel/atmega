@@ -16,6 +16,7 @@ struct State {
 fn setup() -> State {
     Serial::begin(57600);
     pin_mode(Pin::D9, PinMode::OUTPUT);
+    digital_write(Pin::D9, HIGH);
     State { prev_millis: millis() }
 }
 
@@ -23,9 +24,10 @@ fn setup() -> State {
 /// Equivalent to the `loop` function in the Arduino language.
 fn run(state: &mut State) {
     let ms = millis();
-    if ms - state.prev_millis >= 2000 {
+    if ms - state.prev_millis >= 1000 {
         digital_toggle(Pin::D9);
         state.prev_millis = ms;
         println!("{}ms, {}", ms, digital_read(Pin::D9));
     }
+    delay(500);
 }
