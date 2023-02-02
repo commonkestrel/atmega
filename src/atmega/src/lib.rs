@@ -19,8 +19,9 @@ use core::panic::PanicInfo;
 
 #[doc(hidden)]
 pub fn init() {
-    #[cfg(feature = "millis")]
-    timer::begin_systick();
+    if cfg!(any(feature = "millis", feature = "delay")) {
+        timer::timer0_init();
+    }
 }
 
 /// Takes two arguments, `setup()` and `run()`.
