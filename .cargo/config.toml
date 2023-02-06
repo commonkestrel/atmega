@@ -5,7 +5,7 @@ target = "avr-atmega328p.json"
 build-std = ["core"]
 
 [target.'cfg(target_arch = "avr")']
-runner = "ravedude uno --open-console --baudrate 57600"
+runner = "ravedude uno --open-console --baudrate 9600"
 
 [env]
-AVR_CPU_FREQUENCY_HZ = "16_000_000"
+AVR_CPU_FREQUENCY_HZ = "16000000"
