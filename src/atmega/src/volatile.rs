@@ -1,3 +1,5 @@
+//! A dead simple safe(ish) way to communicate to and from interrupts with global statics.
+
 use crate::interrupt;
 use core::cell::UnsafeCell;
 use core::ptr::{ write_volatile, read_volatile };
