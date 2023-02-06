@@ -117,7 +117,7 @@ pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     let interrupt = match Interrupt::ident(&f.sig.ident) {
         Some(i) => i,
         None => {
-            return syn::parse::Error::new(fnspan, "Interrupt name not recognized")
+            return syn::parse::Error::new(fnspan, "Interrupt name not recognized. See atmega::interrupt::Interrupt for all options")
                 .to_compile_error()
                 .into()
         }
