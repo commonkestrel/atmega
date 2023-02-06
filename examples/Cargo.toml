@@ -1,0 +1,23 @@
+[package]
+name = "examples"
+authors = ["Kestrel"]
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[profile.dev]
+opt-level = 2
+lto = true
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = "z"
+
+[dev-dependencies]
+atmega = { path = "../" }
+
+[[example]]
+name = "fade"
+path = "fade.rs"
