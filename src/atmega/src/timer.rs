@@ -1,7 +1,7 @@
 use crate::CPU_FREQUENCY;
-#[cfg(any(feature = "millis", feature = "delay"))]
+#[cfg(feature = "millis")]
 use crate::volatile::Volatile;
-use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TCCR0A, TCCR0B, TIMSK0, TCNT0 };
+use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TIMSK0, TCNT0 };
 
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
