@@ -28,26 +28,32 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
         Self::write(operator(Self::read()))
     }
 
+    #[inline(always)]
     fn bit(&self) -> u8 {
         Into::<u8>::into(*self)
     }
 
+    #[inline(always)]
     unsafe fn read_bit(&self) -> bool {
         0 < Self::read() & (1 << self.bit())
     }
 
+    #[inline(always)]
     unsafe fn set(&self) {
         Self::write(Self::read() | (1 << self.bit()))
     }
 
+    #[inline(always)]
     unsafe fn clear(&self) {
         Self::write(Self::read() & !(1 << self.bit()))
     }
 
+    #[inline(always)]
     unsafe fn toggle(&self) {
         Self::write(Self::read() ^ (1 << self.bit()))
     }
 
+    #[inline(always)]
     unsafe fn set_value(&self, value: bool) {
         if value {
             self.set();
@@ -56,13 +62,9 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
         }
     }
 
+    #[inline(always)]
     unsafe fn until<F: Fn(u8) -> bool>(check: F) {
-        loop {
-            let value = Self::read();
-            if check(value) {
-                return;
-            }
-        }
+        while !check(Self::read()) {}
     }
 }
 
@@ -416,6 +418,26 @@ pub enum TCCR1B {
 }
 
 #[derive(Clone, Copy)]
+pub enum TCCR2A {
+    WGM20  = 0,
+    WGM21  = 1,
+    COM2B0 = 4,
+    COM2B1 = 5,
+    COM2A0 = 6,
+    COM2A1 = 7,
+}
+
+#[derive(Clone, Copy)]
+pub enum TCCR2B {
+    CS20  = 0,
+    CS21  = 1,
+    CS22  = 2,
+    WGM22 = 3,
+    FOC2B = 6,
+    FOC2A = 7,
+}
+
+#[derive(Clone, Copy)]
 pub enum TCNT1L {
     TCNT1L0 = 0,
     TCNT1L1 = 1,
@@ -439,7 +461,7 @@ pub enum TCNT1H {
     TCNT1H7 = 7,
 }
 
-/// Output Compare Register A
+/// Timer 0 Output Compare Register A
 #[derive(Clone, Copy)]
 pub enum OCR0A {
     OCR0A0 = 0,
@@ -452,7 +474,7 @@ pub enum OCR0A {
     OCR0A7 = 7,
 }
 
-/// Output Compare Register B
+/// Timer 0 Output Compare Register B
 #[derive(Clone, Copy)]
 pub enum OCR0B {
     OCR0B0 = 0,
@@ -465,7 +487,85 @@ pub enum OCR0B {
     OCR0B7 = 7,
 }
 
-/// Interrupt Mask Register
+/// Timer 1 Output Compare Register A low byte
+#[derive(Clone, Copy)]
+pub enum OCR1AL {
+    OCR0A0 = 0,
+    OCR0A1 = 1,
+    OCR0A2 = 2,
+    OCR0A3 = 3,
+    OCR0A4 = 4,
+    OCR0A5 = 5,
+    OCR0A6 = 6,
+    OCR0A7 = 7,
+}
+
+/// Timer 1 Output Compare Register A high byte
+#[derive(Clone, Copy)]
+pub enum OCR1AH {
+    OCR0B8  = 0,
+    OCR0B9  = 1,
+    OCR0B10 = 2,
+    OCR0B11 = 3,
+    OCR0B12 = 4,
+    OCR0B13 = 5,
+    OCR0B14 = 6,
+    OCR0B15 = 7,
+}
+
+/// Timer 1 Output Compare Register B low byte
+#[derive(Clone, Copy)]
+pub enum OCR1BL {
+    OCR0A0 = 0,
+    OCR0A1 = 1,
+    OCR0A2 = 2,
+    OCR0A3 = 3,
+    OCR0A4 = 4,
+    OCR0A5 = 5,
+    OCR0A6 = 6,
+    OCR0A7 = 7,
+}
+
+/// Timer 1 Output Compare Register B high byte
+#[derive(Clone, Copy)]
+pub enum OCR1BH {
+    OCR0B8  = 0,
+    OCR0B9  = 1,
+    OCR0B10 = 2,
+    OCR0B11 = 3,
+    OCR0B12 = 4,
+    OCR0B13 = 5,
+    OCR0B14 = 6,
+    OCR0B15 = 7,
+}
+
+/// Timer 2 Output Compare Register A
+#[derive(Clone, Copy)]
+pub enum OCR2A {
+    OCR2A0 = 0,
+    OCR2A1 = 1,
+    OCR2A2 = 2,
+    OCR2A3 = 3,
+    OCR2A4 = 4,
+    OCR2A5 = 5,
+    OCR2A6 = 6,
+    OCR2A7 = 7,
+}
+
+/// Timer 2 Output Compare Register B
+#[derive(Clone, Copy)]
+pub enum OCR2B {
+    OCR2B0 = 0,
+    OCR2B1 = 1,
+    OCR2B2 = 2,
+    OCR2B3 = 3,
+    OCR2B4 = 4,
+    OCR2B5 = 5,
+    OCR2B6 = 6,
+    OCR2B7 = 7,
+}
+
+/// Timer 0 Interrupt Mask Register
 #[derive(Clone, Copy)]
 pub enum TIMSK0 {
     TOIE0 = 0,
@@ -576,10 +676,18 @@ register!(
     TIMSK1[0x6F],
     TCCR1A[0x80],
     TCCR1B[0x81],
+    TCCR2A[0xB0],
+    TCCR2B[0xB1],
     TCNT1L[0x84],
     TCNT1H[0x85],
     OCR0A[0x47],
     OCR0B[0x48],
+    OCR1AL[0x88],
+    OCR1AH[0x89],
+    OCR1BL[0x8A],
+    OCR1BH[0x8B],
+    OCR2A[0xB3],
+    OCR2B[0xB4],
     TIMSK0[0x6E],
     UBRR0L[0xC4],
     UBRR0H[0xC5],
@@ -649,52 +757,4 @@ impl<B: Register, C: Register, D: Register> PinReg<B, C, D> {
             Self::D(bit) => bit.set_value(value),
         }
     }
-}
-
-// 8-Bit operators
-
-/// Flips the bit at the given offset.
-/// Equivalent to a `not` operation.
-pub fn toggle(byte: u8, bit: u8) -> u8 {
-    byte ^ (1 << bit)
-}
-
-/// Sets the bit at the given offset, changing to a `1`
-pub fn set(byte: u8, bit: u8) -> u8 {
-    byte | (1 << bit)
-}
-
-/// Clears the bit at the given offset, changing to a `0`
-pub fn clear(byte: u8, bit: u8) -> u8 {
-    byte & !(1 << bit)
-}
-
-/// Changes the bit at the given offset to the given value.
-pub fn set_value(byte: u8, bit: u8, value: bool) -> u8 {
-    if value {
-        set(byte, bit)
-    } else {
-        clear(byte, bit)
-    }
-}
-
-/// Reads the bit at the given offset.
-pub fn read(byte: u8, bit: u8) -> bool {
-    let isolated = byte & (1 << bit);
-    isolated != 0
-}
-
-/// Reads the byte at the given address, performs the given operation on the value, then writes the output back to the address.
-/// 
-/// # Example
-/// ```
-/// const ADDR: *mut u8 = 0x23 as *mut u8;
-/// write_volatile(ADDR, 0b0011_0011);
-/// registers::operate(ADDR, |val| !val);
-/// assert_eq!(read_volatile(ADDR), 0b1100_1100);
-/// ```
-/// 
-pub unsafe fn operate<F: Fn(u8) -> u8>(address: *mut u8, operator: F) {
-    let current = read_volatile(address);
-    write_volatile(address, operator(current));
 }
