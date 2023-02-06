@@ -7,6 +7,7 @@ build = "build.rs"
 readme = "README.md"
 repository = "https://github.com/commonkestrel/atmega"
 keywords = ["atmega", "arduino", "avr", "uno"]
+categories = ["no-std", "embedded"]
 license = "MIT"
 exclude = ["/.vscode"]
 
