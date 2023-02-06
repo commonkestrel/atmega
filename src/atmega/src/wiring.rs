@@ -1,4 +1,66 @@
-use crate::registers::{ Register, PINx, DDRx, PORTx, PINB, DDRB, PORTB, PINC, DDRC, PORTC, PIND, DDRD, PORTD, ADMUX, ADCSRA, ADCL, ADCH };
+// Some documentation taken from https://github.com/arduino/ArduinoCore-avr/blob/master/cores/arduino/wiring.c
+
+use crate::registers::*;
+
+pub fn init() {
+    unsafe {
+        // this needs to be called before setup() or some functions won't work there
+        crate::interrupt::enable();
+
+        // timer 0 is also used for fast hardware pwm
+        // (using phase-correct PWM would mean that timer 0 overflowed half as often
+        // resulting in different millis() behavior)
+        TCCR0A::WGM01.set();
+        TCCR0A::WGM00.set();
+        
+        // set timer 0 prescale factor to 64
+        TCCR0B::CS01.set();
+        TCCR0B::CS00.set();
+
+        // enable timer 0 overflow interrupt 
+        TIMSK0::TOIE0.set();
+
+        // timers 1 and 2 are used for phase-correct hardware pwm
+        // this is better for motors as it ensures an even waveform
+        // note, however, that fast pwm mode can achieve a frequency of up
+        // 8 MHz (with a 16 MHz clock) at 50% duty cycle
+
+        // set timer 1 prescale factor to 64
+        TCCR1B::write(0);
+        TCCR1B::CS11.set();
+
+        // put timer1 in 8-bit phase correct pwm mode
+        TCCR1A::WGM10.set();
+
+        // set timer 2 prescale factor to 64
+        TCCR2B::CS22.set();
+
+        // configure timer 2 for phase correct pwm (8-bit)
+        TCCR2A::WGM20.set();
+        
+        // set a2d prescaler so we are inside the desired 50-200 KHz range
+        let adp = match crate::CPU_FREQUENCY {
+            16_000_000.. => (true,  true,  true),  // 16 MHz / 128 = 125 KHz
+            8_000_000..  => (false, true,  true),  // 8 MHz / 64 = 125 KHz
+            4_000_000..  => (true,  false, true),  // 4 MHz / 32 = 125 KHz
+            2_000_000..  => (false, false, true),  // 2 MHz / 16 = 125 KHz
+            1_000_000..  => (true,  true,  false), // 1 MHz / 8 = 125 KHz
+            _            => (true,  false, false), // 128 KHz / 2 = 64 KHz -> This is the closest you can get, the prescaler is 2
+        };
+
+        ADCSRA::ADPS0.set_value(adp.0);
+        ADCSRA::ADPS1.set_value(adp.1);
+        ADCSRA::ADPS2.set_value(adp.2);
+
+        // enable a2d conversions
+        ADCSRA::ADEN.set();
+
+        // the bootloader connects pins 0 and 1 to the USART; disconnect them
+        // here so they can be used as normal digital i/o; they will be
+        // reconnected in Serial::begin()
+        UCSR0B::write(0);
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Pin {
@@ -30,10 +92,63 @@ impl Pin {
         (*self as u8) <= 13
     }
 
-    fn is_pwm(&self) -> bool {
-        let num = *self as u8;
+    fn pwm(&self) -> Option<Timer> {
         // Pins 3, 5, 6, 8, 10, and 11 are PWM pins
-        (num == 3) || (num == 5) || (num == 6) || (num == 9) || (num == 10) || (num == 11)
+        match self {
+            Self::D6  => Some(Timer::TIMER0A),
+            Self::D5  => Some(Timer::TIMER0B),
+            Self::D9  => Some(Timer::TIMER1A),
+            Self::D10 => Some(Timer::TIMER1B),
+            Self::D11 => Some(Timer::TIMER2A),
+            Self::D3  => Some(Timer::TIMER2B),
+            _ => None
+        }
+    }
+}
+
+enum Timer {
+    TIMER0A,
+    TIMER0B,
+    TIMER1A,
+    TIMER1B,
+    TIMER2A,
+    TIMER2B,
+}
+
+impl Timer {
+    /// Connect PWM to pin on timer
+    fn connect_pwm(&self) {
+        use Timer::*;
+        unsafe {
+            match self {
+                TIMER0A => { TCCR0A::COM0A1.set(); },
+                TIMER0B => { TCCR0A::COM0B1.set(); },
+                TIMER1A => { TCCR1A::COM1A1.set(); },
+                TIMER1B => { TCCR1A::COM1B1.set(); },
+                TIMER2A => { TCCR2A::COM2A1.set(); },
+                TIMER2B => { TCCR2A::COM2B1.set(); },
+            }
+        }
+    }
+
+    fn set_ocr(&self, value: u8) {
+        use Timer::*;
+        unsafe {
+            match self {
+                TIMER0A => { OCR0A::write(value); },
+                TIMER0B => { OCR0B::write(value); },
+                TIMER1A => {
+                    OCR1AH::write(0);
+                    OCR1AL::write(value);
+                },
+                TIMER1B => {
+                    OCR1BH::write(0);
+                    OCR1BL::write(value);
+                }
+                TIMER2A => { OCR2A::write(value); },
+                TIMER2B => { OCR2B::write(value); },
+            };
+        }
     }
 }
 
@@ -70,6 +185,17 @@ impl core::fmt::Display for Pin {
         write!(f, "")
     }
 }
+
+#[derive(Debug, Clone)]
+#[allow(non_camel_case_types)]
+pub enum PinMode {
+    INPUT,
+    INPUT_PULLUP,
+    OUTPUT,
+}
+
+pub const HIGH: bool = true;
+pub const LOW: bool = false;
 
 #[derive(Debug, Clone)]
 enum Registers {
@@ -236,17 +362,6 @@ impl Registers {
     }
 }
 
-#[derive(Debug, Clone)]
-#[allow(non_camel_case_types)]
-pub enum PinMode {
-    INPUT,
-    INPUT_PULLUP,
-    OUTPUT,
-}
-
-pub const HIGH: bool = true;
-pub const LOW: bool = false;
-
 pub fn pin_mode(pin: Pin, value: PinMode) {
     let register = Registers::from(pin.clone()).ddrx();
     match value {
@@ -325,15 +440,20 @@ pub fn analog_read(pin: Pin) -> u16 {
 
 /// Sets the given PWM pin to the given value between 0-255.
 /// If the given pin does not have PWM this will call `digital_write` instead.
-///
-/// # Warning
-/// If the `millis` feature is enabled the PWM in Pin 9 will be disabled.
-/// This is because `analog_write` uses Timer 1 COMPA, which millis uses for interrupts.
 pub fn analog_write(pin: Pin, value: u8) {
-    if !pin.is_pwm() || (cfg!(feature = "millis") && pin == Pin::D9) {
+    pin_mode(pin, PinMode::OUTPUT);
+    if value == 0 {
+        digital_write(pin, LOW);
+    } else if value == 255 {
+        digital_write(pin, HIGH);
+    }
+
+    let pwm = pin.pwm();
+    if let Some(timer) = pwm {
+        timer.connect_pwm();  // connect pwm to pin
+        timer.set_ocr(value); // set pwm duty
+    } else {
         // Round to high or low if the pin does not have PWM
         digital_write(pin, value >= 128)
     }
-
-
 } 
