@@ -1,5 +1,5 @@
-use core::arch::asm;
 use crate::CPU_FREQUENCY;
+#[cfg(any(feature = "millis", feature = "delay"))]
 use crate::volatile::Volatile;
 use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TCCR0A, TCCR0B, TIMSK0, TCNT0 };
 
@@ -18,22 +18,23 @@ pub fn read_timer1() -> u16 {
 }
 
 /// Sleep for the specified number of clock cycles.
-/// Has a precision of 8 cycles.
+/// Has a precision of 64 cycles.
 pub fn delay_cycles(cycles: u64) {
-    // Timer prescaler is set to 8, which means the timer increments every 8 clock cycles
-    let scaled_cycles = (cycles)/(2*8); 
+    // Timer 0 prescaler is set to 64, which means the timer increments every 8 clock cycles
+    let scaled_cycles = cycles/64;
     
     let individual = (scaled_cycles%256) as u8;
     let initial = unsafe{ TCNT0::read() };
 
-    // Checks if (the value already in TIMER0 + the individual ticks needed to delay) are greater than the max value of TIMER0
+    // Checks if (the value already in Timer 0 + the individual ticks needed to delay) are greater than the max value of Timer 0 (2^8)
+    // The value in Timer 0 cannot be changed as this will offset millis()
     let (of_required, remaining) = if initial.checked_add(individual).is_none() {
         ((scaled_cycles/256)+1, individual-initial)
     } else {
         (scaled_cycles/256, individual)
     };
 
-    // Disable TIMER0 OVF interrupt
+    // Disable Timer 0 OVF interrupt
     // This prevents TOV0 from being cleared automatically
     unsafe { TIMSK0::TOIE0.clear(); }
     
@@ -44,20 +45,21 @@ pub fn delay_cycles(cycles: u64) {
             // To clear a bit in the TIFR you must write it high
             TIFR0::write(0b0000_0001);
         }
-        // Update SYSTICK since the TIMER0 overflow interrupt is captured by this loop
+        // Update SYSTICK since the Timer 0 overflow interrupt is captured by this loop
         #[cfg(feature = "millis")]
         SYSTICK.operate(|val| val + 1);
     }
 
-    // Renable TIMER0 OVF interrupt
+    // Renable Timer 0 OVF interrupt
     // This allows systick to update
     unsafe { TIMSK0::TOIE0.set(); }
 
-    // Wait for the value 
-    unsafe { while TCNT0::read() <= remaining {} }
+    // Wait for the remaining cycles
+    unsafe { TCNT0::until(|val| val <= remaining) }
 }
 
 /// Sleep for a given number of microseconds.
+/// Has a precision of 8μs.
 pub fn delay_micros(us: u64) {
     delay_cycles(us*CPU_FREQUENCY/MICROS);
 }
@@ -70,33 +72,11 @@ pub fn delay(ms: u64) {
 #[cfg(feature = "millis")]
 static SYSTICK: Volatile<u64> = Volatile::new(0);
 
-#[cfg(any(feature = "millis", feature = "delay"))]
-pub fn timer0_init() {
-    SYSTICK.write(0);   
-    unsafe {
-        // Set to mode 3, Fast PWM with the top at 0xFF (Page 88 of the ATmega328p docs)
-        TCCR0A::WGM00.set();
-        TCCR0A::WGM01.clear();
-        TCCR0B::WGM02.clear();
-
-        // Set prescale for TIMER0 to 8
-        TCCR0B::CS00.clear();
-        TCCR0B::CS01.set();
-        TCCR0B::CS02.clear();
-
-        // Enable TIMER0_OVF interrupt
-        TIMSK0::TOIE0.set();
-        
-        // Enable interrupts
-        asm!("sei");
-    }
-}
-
-/// The total milliseconds since system startup
+/// The total milliseconds since system boot.
 #[inline]
 #[cfg(feature = "millis")]
 pub fn millis() -> u64 {
-    SYSTICK.read() * 32 / 125
+    SYSTICK.read().wrapping_mul(64 * 256) / (CPU_FREQUENCY/MILLIS)
 }
 
 #[cfg(feature = "millis")]
