@@ -5,13 +5,14 @@
 // The CPU_FREQUENCY constant is imported this way
 include!(concat!(env!("OUT_DIR"), "/constants.rs")); 
 
-pub mod pins;
+pub mod wiring;
 pub mod registers;
 pub mod prelude;
 pub mod timer;
 pub mod volatile;
 pub mod interrupt;
 pub mod serial;
+pub mod bits;
 #[cfg(feature = "interrupt-macro")]
 pub use atmega_macros::interrupt;
 
@@ -19,9 +20,7 @@ use core::panic::PanicInfo;
 
 #[doc(hidden)]
 pub fn init() {
-    if cfg!(any(feature = "millis", feature = "delay")) {
-        timer::timer0_init();
-    }
+    wiring::init();
 }
 
 /// Takes two arguments, `setup()` and `run()`.
