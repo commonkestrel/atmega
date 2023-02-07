@@ -1,10 +1,8 @@
-# ATmega328p-rs
+# atmega
 
-Just a small project for controlling an ATmega328p (the microcontroller in the Arduino Uno) with Rust.
-This is nowhere near finished, I just had fun working at a lower level with the Philipp Oppermann [blog_os](https://os.phil-opp.com/) and figured this was a perfect project to work on.
+A small project for controlling the ATmega328p microcontroller (The microcontroller in the Arduino Uno) with Rust.
+Not quite finished, but this works well enough to make simple programs.
 
-Build with `cargo build --release`, and upload the resulting `.elf` file at `./avr-atmega328p/release/arduino-rs.elf` to a board or simulator.
-If the dev build (`cargo build`) fails with `error: ran out of registers during register allocation`, try increasing the `opt-level` for `[profile.dev]` to 3.
-Advice on flashing to a real chip can be found [here](https://book.avr-rust.com/004-flashing-a-crate-to-chip.html)
-
-The [ATmega328p Datasheet](https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7810-Automotive-Microcontrollers-ATmega328P_Datasheet.pdf) and the [ATmega328 Register Reference](https://arbaranwal.github.io/tutorial/2017/06/23/atmega328-register-reference.html) by [arbaranwal](https://github.com/arbaranwal) was a huge help for register addresses and functions.
+## Why should I use this?
+If you are looking for a higher level, easy to use interface with the ATmega328p, this is the crate for you.
+If you want an auto-generated low-level interface to dozens of microcontrollers including the ATmega328p, [ruduino](https://github.com/avr-rust/ruduino).
