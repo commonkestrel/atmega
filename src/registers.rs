@@ -147,6 +147,7 @@ macro_rules! register {
     };
 }
 
+/// AVR Status Register
 #[derive(Clone, Copy)]
 pub enum SREG {
     C = 0,
@@ -380,6 +381,7 @@ pub enum TCNT0 {
     TCNT07 = 7,
 }
 
+/// Timer/Counter1 Interrupt Flag Register
 #[derive(Clone, Copy)]
 pub enum TIFR1 {
     TOV1  = 0,
@@ -388,6 +390,7 @@ pub enum TIFR1 {
     ICF1  = 5,
 }
 
+/// Timer/Counter1 Interrupt Mask Register
 #[derive(Clone, Copy)]
 pub enum TIMSK1 {
     TOIE1  = 0,
@@ -396,6 +399,7 @@ pub enum TIMSK1 {
     ICIE1  = 5,
 }
 
+/// Timer/Counter1 Control Register A
 #[derive(Clone, Copy)]
 pub enum TCCR1A {
     WGM10  = 0,
@@ -406,6 +410,7 @@ pub enum TCCR1A {
     COM1A1 = 7,
 }
 
+/// Timer/Counter1 Control Register B
 #[derive(Clone, Copy)]
 pub enum TCCR1B {
     CS10  = 0,
@@ -417,6 +422,7 @@ pub enum TCCR1B {
     ICNC1 = 7,
 }
 
+//Timer/Counter2 Control Register A
 #[derive(Clone, Copy)]
 pub enum TCCR2A {
     WGM20  = 0,
@@ -427,6 +433,7 @@ pub enum TCCR2A {
     COM2A1 = 7,
 }
 
+//Timer/Counter2 Control Register B
 #[derive(Clone, Copy)]
 pub enum TCCR2B {
     CS20  = 0,
@@ -437,6 +444,7 @@ pub enum TCCR2B {
     FOC2A = 7,
 }
 
+/// Timer/Counter1 Low
 #[derive(Clone, Copy)]
 pub enum TCNT1L {
     TCNT1L0 = 0,
@@ -449,6 +457,7 @@ pub enum TCNT1L {
     TCNT1L7 = 7,
 }
 
+/// Timer/Counter1 High
 #[derive(Clone, Copy)]
 pub enum TCNT1H {
     TCNT1H0 = 0,
@@ -487,7 +496,7 @@ pub enum OCR0B {
     OCR0B7 = 7,
 }
 
-/// Timer 1 Output Compare Register A low byte
+/// Timer 1 Output Compare Register A Low
 #[derive(Clone, Copy)]
 pub enum OCR1AL {
     OCR0A0 = 0,
@@ -500,7 +509,7 @@ pub enum OCR1AL {
     OCR0A7 = 7,
 }
 
-/// Timer 1 Output Compare Register A high byte
+/// Timer 1 Output Compare Register A High
 #[derive(Clone, Copy)]
 pub enum OCR1AH {
     OCR0B8  = 0,
@@ -513,7 +522,7 @@ pub enum OCR1AH {
     OCR0B15 = 7,
 }
 
-/// Timer 1 Output Compare Register B low byte
+/// Timer 1 Output Compare Register B Low
 #[derive(Clone, Copy)]
 pub enum OCR1BL {
     OCR0A0 = 0,
@@ -526,7 +535,7 @@ pub enum OCR1BL {
     OCR0A7 = 7,
 }
 
-/// Timer 1 Output Compare Register B high byte
+/// Timer 1 Output Compare Register B High
 #[derive(Clone, Copy)]
 pub enum OCR1BH {
     OCR0B8  = 0,
@@ -573,6 +582,7 @@ pub enum TIMSK0 {
     OCIEB = 2,
 }
 
+/// USART Baud Rate Register Low
 #[derive(Clone, Copy)]
 pub enum UBRR0L {
     UBRR00 = 0,
@@ -585,6 +595,7 @@ pub enum UBRR0L {
     UBRR07 = 7,
 }
 
+/// USART Baud Rate Register High
 #[derive(Clone, Copy)]
 pub enum UBRR0H {
     UBRR08  = 0,
@@ -593,6 +604,7 @@ pub enum UBRR0H {
     UBRR011 = 3,
 }
 
+/// USART Control and Status Register 0 A
 #[derive(Clone, Copy)]
 pub enum UCSR0A {
     MPCM0 = 0,
@@ -605,6 +617,7 @@ pub enum UCSR0A {
     RXC0  = 7,
 }
 
+/// USART Control and Status Register 0 B
 #[derive(Clone, Copy)]
 pub enum UCSR0B {
     TXB80  = 0,
@@ -617,6 +630,7 @@ pub enum UCSR0B {
     RXCIE0 = 7,
 }
 
+/// USART Control and Status Register 0 C
 #[derive(Clone, Copy)]
 pub enum UCSR0C {
     UCPOL0  = 0,
@@ -629,6 +643,7 @@ pub enum UCSR0C {
     UMSEL01 = 7
 }
 
+/// USART I/O Data Register 0
 #[derive(Clone, Copy)]
 pub enum UDR0 {
     UDR00 = 0,
@@ -641,11 +656,13 @@ pub enum UDR0 {
     UDR07 = 7,
 }
 
+/// ADC Data Register Low
 #[derive(Clone, Copy)]
 pub enum ADCL {
 
 }
 
+/// ADC Data Register High
 #[derive(Clone, Copy)]
 pub enum ADCH {
     
