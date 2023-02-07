@@ -41,7 +41,8 @@ macro_rules! run {
 }
 
 #[panic_handler]
-pub fn panic(_info: &PanicInfo) -> ! {
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("panic: {}", info);
     loop {}
 }
 
