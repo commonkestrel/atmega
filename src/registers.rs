@@ -422,7 +422,7 @@ pub enum TCCR1B {
     ICNC1 = 7,
 }
 
-//Timer/Counter2 Control Register A
+/// Timer/Counter2 Control Register A
 #[derive(Clone, Copy)]
 pub enum TCCR2A {
     WGM20  = 0,
@@ -433,7 +433,7 @@ pub enum TCCR2A {
     COM2A1 = 7,
 }
 
-//Timer/Counter2 Control Register B
+/// Timer/Counter2 Control Register B
 #[derive(Clone, Copy)]
 pub enum TCCR2B {
     CS20  = 0,
