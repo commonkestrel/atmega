@@ -1,6 +1,10 @@
 use crate::CPU_FREQUENCY;
+use crate::buffer::Buffer;
+use crate::volatile::Volatile;
 use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
 use core::fmt::Write;
+
+static USART_BUFFER: Volatile<Buffer> = Volatile::new(Buffer::new());
 
 pub struct Serial {}
 
@@ -9,7 +13,8 @@ impl Serial {
         Serial {}
     }
 
-    pub fn begin(baud:u32) {
+    /// Initialize serial at the given baud rate
+    pub fn begin(baud: u32) {
         let ubrr = ((CPU_FREQUENCY / (16*baud) as u64)-1) as u16;
         unsafe {
             // Write baud rate to UBRR
@@ -36,13 +41,45 @@ impl Serial {
         }
     }
 
-    pub fn ready() -> bool {
+    pub fn transmit_ready() -> bool {
         unsafe { UCSR0A::UDRE0.read_bit() }
     }
 
+    /// Transmits byte over serial.
+    /// Blocking
     pub fn transmit(byte: u8) {
-        while !Self::ready() {}
+        while !Self::transmit_ready() {}
         unsafe { UDR0::write(byte) };
+    }
+
+    pub fn recieve_ready() -> bool {
+        unsafe { UCSR0A::RXC0.read_bit() }
+    }
+
+    /// Waits for a byte to be recieved over serial.
+    /// Blocking, use `try_serial()` for a non-blocking version.
+    pub fn recieve() -> u8 {
+        while !Self::recieve_ready() {}
+        unsafe { UDR0::read() }
+    }
+
+    /// Returns recieved data if there is any available.
+    pub fn try_recieve() -> Option<u8> {
+        if Self::recieve_ready() {
+            Some(unsafe { UDR0::read() })
+        } else {
+            None
+        }
+    }
+
+    /// The total bytes stored in the USART buffer
+    pub fn available() -> u8 {
+        USART_BUFFER.read().available()
+    }
+
+    /// Read the byte at the front of the USART buffer
+    pub fn read() -> Option<u8> {
+        USART_BUFFER.read().read()
     }
 }
 
@@ -69,4 +106,12 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
     Serial::new().write_fmt(args).unwrap();
+}
+
+#[doc(hidden)]
+#[inline(always)]
+#[allow(non_snake_case)]
+#[export_name = "__vector_18"]
+pub unsafe extern "avr-interrupt" fn USART_RX() {
+    USART_BUFFER.operate(|mut buf| { buf.write(UDR0::read()); buf });
 }
