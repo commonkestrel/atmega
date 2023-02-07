@@ -20,6 +20,7 @@ cargo install cargo-generate
 cargo generate --git https://github.com/commonkestrel/atmega-template --name $PROJECT_NAME
 cd $PROJECT_NAME
 cargo override set nightly
+rustup component add rust-src
 cargo install ravedude
 ```
 This should install [cargo-generate](https://github.com/cargo-generate/cargo-generate) and create a new project from the [template](https://github.com/commonkestrel/atmega-template). 
@@ -37,4 +38,9 @@ To start add this:
 #![no_main]
 ```
 I know, it already looks scary, but stay with me.
-All this does is disable the Rust standard library and tell the compiler we don't have a main function
+All this does is disable the Rust standard library and tell the compiler we don't have a main function.
+*Why do we need to do that?*, you may ask.
+The Rust standard library links to many things that AVR targets just don't have, like native `C` libraries and an allocator.
+Disabling the standard library allows us to compile to targets without this.
+Many of Rust's features are disabled this way, like `Vec`, `String`, `Mutex`, `format!()`, etc.
+Many Rust standard library features are available through the `core` crate, however, 
