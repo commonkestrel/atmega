@@ -2,7 +2,7 @@
 #![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core)]
 
 // Used to import environment variables as values other than &'static str
-// The CPU_FREQUENCY constant is imported this way
+// CPU_FREQUENCY is imported this way
 include!(concat!(env!("OUT_DIR"), "/constants.rs")); 
 
 pub mod wiring;
@@ -13,10 +13,10 @@ pub mod volatile;
 pub mod interrupt;
 pub mod serial;
 pub mod bits;
+pub mod buffer;
+
 #[cfg(feature = "interrupt-macro")]
 pub use atmega_macros::interrupt;
-
-use core::panic::PanicInfo;
 
 #[doc(hidden)]
 pub fn init() {
@@ -41,7 +41,7 @@ macro_rules! run {
 }
 
 #[panic_handler]
-pub fn panic(info: &PanicInfo) -> ! {
+pub fn panic(info: &core::panic::PanicInfo) -> ! {
     println!("panic: {}", info);
     loop {}
 }
