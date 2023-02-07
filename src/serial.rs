@@ -1,9 +1,13 @@
 use crate::CPU_FREQUENCY;
-use crate::buffer::Buffer;
-use crate::volatile::Volatile;
 use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
 use core::fmt::Write;
 
+#[cfg(feature = "serial-buffer")]
+use crate::buffer::Buffer;
+#[cfg(feature = "serial-buffer")]
+use crate::volatile::Volatile;
+
+#[cfg(feature = "serial-buffer")]
 static USART_BUFFER: Volatile<Buffer> = Volatile::new(Buffer::new());
 
 pub struct Serial {}
@@ -52,18 +56,21 @@ impl Serial {
         unsafe { UDR0::write(byte) };
     }
 
+    #[cfg(not(feature = "serial-buffer"))]
     pub fn recieve_ready() -> bool {
         unsafe { UCSR0A::RXC0.read_bit() }
     }
 
     /// Waits for a byte to be recieved over serial.
     /// Blocking, use `try_serial()` for a non-blocking version.
+    #[cfg(not(feature = "serial-buffer"))]
     pub fn recieve() -> u8 {
         while !Self::recieve_ready() {}
         unsafe { UDR0::read() }
     }
 
     /// Returns recieved data if there is any available.
+    #[cfg(not(feature = "serial-buffer"))]
     pub fn try_recieve() -> Option<u8> {
         if Self::recieve_ready() {
             Some(unsafe { UDR0::read() })
@@ -73,11 +80,13 @@ impl Serial {
     }
 
     /// The total bytes stored in the USART buffer
+    #[cfg(feature = "serial-buffer")]
     pub fn available() -> u8 {
         USART_BUFFER.read().available()
     }
 
     /// Read the byte at the front of the USART buffer
+    #[cfg(feature = "serial-buffer")]
     pub fn read() -> Option<u8> {
         USART_BUFFER.read().read()
     }
@@ -108,6 +117,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
     Serial::new().write_fmt(args).unwrap();
 }
 
+#[cfg(feature = "serial-buffer")]
 #[doc(hidden)]
 #[inline(always)]
 #[allow(non_snake_case)]

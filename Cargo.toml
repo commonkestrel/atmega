@@ -25,10 +25,12 @@ opt-level = "z"
 atmega_macros = { path = "./macros", optional = true }
 
 [features]
-default = ["millis"]
+default = ["millis", "serial-buffer"]
 
 ## The millis function consumes the TIMER0_OVF interrupt
-## Disable this if you require TIMER0_COMPA interrupt
 millis = []
+
+## The serial buffer consumes all incoming serial traffic as well as the USART_RX interrupt
+serial-buffer = []
 
 interrupt-macro = ["atmega_macros"]
