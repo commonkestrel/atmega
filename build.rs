@@ -20,6 +20,6 @@ fn main() {
             16_000_000
         },
     };
-    write!(&mut f, "pub const CPU_FREQUENCY: u64 = {};", frequency).expect("Failed to write file");
+    write!(&mut f, "/// Reflects contents of AVR_CPU_FREQUENCY_HZ environment variable (defaults to 16MHz)\npub const CPU_FREQUENCY: u64 = {};", frequency).expect("Failed to write file");
     println!("cargo:rerun-if-env-changed=AVR_CPU_FREQUENCY_HZ");
 }
