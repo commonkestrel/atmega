@@ -716,10 +716,8 @@ register!(
     ADCH[0x79],
 );
 
-/// Port B maps to pins `D13`-`D8`
-/// 
-/// Port C maps to pins `A6`-`A0`
-/// 
+/// Port B maps to pins `D13`-`D8`,
+/// Port C maps to pins `A6`-`A0`,
 /// Port D maps to pins `D7`-`D0`
 pub enum PinReg<B: Register, C: Register, D: Register> {
     B(B),
