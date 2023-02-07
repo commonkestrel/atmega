@@ -20,6 +20,7 @@ strip = true
 lto = true
 codegen-units = 1
 opt-level = "z"
+
 [dependencies]
 atmega_macros = { path = "./macros", optional = true }
 
