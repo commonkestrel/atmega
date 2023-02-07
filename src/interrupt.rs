@@ -1,4 +1,5 @@
 use core::arch::asm;
+use crate::registers::{ SREG, Register };
 
 /// This is a copy of the private `Interrupt` enum in `atmega_macros`
 /// 
@@ -33,22 +34,31 @@ pub enum Interrupt {
     SPM_READY    = 25,
 }
 
+/// Enables global interrupts
 #[inline(always)]
-pub unsafe fn enable() {
-    asm!("sei");
+pub fn enable() {
+    unsafe { asm!("sei"); }
 }
 
+/// Disables global interrupts
 #[inline(always)]
-pub unsafe fn disable() {
-    asm!("cli");
+pub fn disable() {
+    unsafe { asm!("cli"); }
 }
 
+/// Runs a function with interrupts disabled
 pub fn without<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    unsafe { disable() };
+    disable();
     let r = f();
-    unsafe { enable() };
+    enable();
     r
+}
+
+/// Checks if global interrupts are enabled
+pub fn enabled() -> bool {
+    // Reads the Global Interrupt Enable bit in the AVR Status Register
+    unsafe { SREG::I.read_bit() }
 }
