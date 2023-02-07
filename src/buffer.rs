@@ -1,6 +1,6 @@
 const BUFFER_SIZE: usize = 64;
 
-/// Simple implementation of a value buffer of length 64
+/// Simple implementation of a value buffer of length 64.
 /// This is an adaptation of the USART_BUFFER from [johncobb/avr_328p_usart](https://github.com/johncobb/avr_328p_usart)
 #[derive(Debug, Clone, Copy)]
 pub struct Buffer {
