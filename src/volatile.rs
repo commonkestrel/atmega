@@ -6,6 +6,9 @@ use core::ptr::{ write_volatile, read_volatile };
 
 /// A dead simple safe(ish) mutable global variable.
 /// Used for communicating to and from interrupts.
+/// 
+/// ## Safety
+/// This is safe since the atmega328p is a strictly single threaded processor.
 pub struct Volatile<T: Copy>(UnsafeCell<T>);
 
 impl<T: Copy> Volatile<T> {
