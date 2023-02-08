@@ -38,9 +38,78 @@ To start add this:
 #![no_main]
 ```
 I know, it already looks scary, but stay with me.
-All this does is disable the Rust standard library and tell the compiler we don't have a main function.
-*Why do we need to do that?*, you may ask.
-The Rust standard library links to many things that AVR targets just don't have, like native `C` libraries and an allocator.
-Disabling the standard library allows us to compile to targets without this.
-Many of Rust's features are disabled this way, like `Vec`, `String`, `Mutex`, `format!()`, etc.
-Many Rust standard library features are available through the `core` crate, however, 
+All this does is tell the compiler to link to [libcore](https://doc.rust-lang.org/core/) instead of [libstd](https://doc.rust-lang.org/std/).
+We need to do this because [libstd](https://doc.rust-lang.org/std/) requires certain C dependencies as well as an allocator, which AVR targets do not have.
+
+However, this does mean that certain data types, functions, and macros like `Vec`, `String`, and `format!` will be unavailable, since these require an allocator.
+
+After this, import the atmega prelude:
+```rust
+use atmega::prelude::*;
+```
+The atmega prelude includes important functions and macros, like `digital_write()`, `pin_mode()`, `delay()`, just like the functions in the Arduino language.
+
+One caviat of using Rust as a language for this instead of C++ is that mutable global variables are much harder.
+Instead of these, we use a State `struct`, which can be passed into the main loop:
+```rust
+struct State{}
+```
+We won't use this for this example, but it can we still need to create it for reasons explained later.
+
+Next we need to add a `setup` function and initialize the pin the LED will be connected to:
+```rust
+fn setup() -> State {
+    pin_mode(Pin::D9, PinMode::OUTPUT);
+    State {}
+}
+```
+In this example we are using pin D9 for the LED, and we initialize it to output.
+We need to return something from this function to pass into out loop, usually your `State`.
+
+Now we need a loop. Since the `loop` keyword is already taken, `run` is used instead.
+```rust
+fn run(_state: State) {
+
+}
+```
+`run` needs to take the return value of `setup` as input.
+It is not used in this example, so you can prefix it with `_`.
+
+Now we need to actually blink the LED.
+Add this inside `run`:
+```rust
+digital_toggle(Pin::D9);
+delay(1000);
+```
+This toggles the output of pin D9 (which we initialized as output earlier), then delays 1000 milliseconds, or 1 second.
+
+Finally, add this near the top of your file: 
+```rust
+run!(setup, run);
+```
+This is a utility macro and takes care of exporting a `main` function, initializing timers and registers, and running your code.
+
+After that, your `main.rs` should look like this: 
+```rust
+#![no_std]
+#![no_main]
+
+use atmega::prelude::*;
+
+run!(setup, run);
+
+struct State {}
+
+fn setup() -> State {
+    pin_mode(Pin::D9, PinMode::OUTPUT);
+    State {}
+}
+
+fn run(_state: State) {
+    digital_toggle(Pin::D9);
+    delay(1000);
+}
+```
+
+If you created your project with [cargo-generate](https://github.com/cargo-generate/cargo-generate), connect your chip to a USB port run `cargo run`.
+You should see you LED start to flash!
