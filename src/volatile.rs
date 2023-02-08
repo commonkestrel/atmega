@@ -28,7 +28,9 @@ impl<T: Copy> Volatile<T> {
     pub fn operate<F: Fn(T) -> T>(&self, operator: F) {
         interrupt::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
-
+    
+    /// Passes the data of type `T` and passes it into the given function as `&mut T`
+    /// Allows the changing of the inner data without reading and overwriting all contents.
     pub fn as_mut<F, R>(&self, operation: F) -> R
     where F: Fn(&mut T) -> R
     {
