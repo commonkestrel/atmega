@@ -29,7 +29,7 @@ impl<T: Copy> Volatile<T> {
         interrupt::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
 
-    pub fn as_mut<F, R>(&self, operation: F)  -> R
+    pub fn as_mut<F, R>(&self, operation: F) -> R
     where F: Fn(&mut T) -> R
     {
         interrupt::without(|| {
