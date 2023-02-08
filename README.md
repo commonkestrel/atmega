@@ -53,7 +53,7 @@ The atmega prelude includes important functions and macros, like `digital_write(
 One caviat of using Rust as a language for this instead of C++ is that mutable global variables are much harder.
 Instead of these, we use a State `struct`, which can be passed into the main loop:
 ```rust
-struct State{}
+struct State {}
 ```
 We won't use this for this example, but it can we still need to create it for reasons explained later.
 
