@@ -28,7 +28,7 @@ AVR Rust is only available in the nightly version, so we need to set the toolcha
 After this we install [`ravedude`](https://github.com/Rahix/avr-hal/tree/main/ravedude), a Rust wrapper around avrdude that provides easy access to the target's serial console, similar to the Arduino IDE serial port.
 
 ## Examples
-Let's start with a classic: blinking an LED
+Let's start with a classic: blinking an LED: 
 [`atmega-template`](https://github.com/commonkestrel/atmega-template) includes a small blink example, but we're going to recreate it here.
 This program should go in `src/main.rs`, like usual.
 
