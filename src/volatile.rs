@@ -15,11 +15,13 @@ impl<T: Copy> Volatile<T> {
     pub const fn new(value: T) -> Volatile<T> {
         Volatile(UnsafeCell::new(value))
     }
-
+    
+    /// Reads the stored data
     pub fn read(&self) -> T {
         interrupt::without(|| unsafe { read_volatile(self.0.get()) })
     }
-
+    
+    /// Overwrites the stored data
     pub fn write(&self, value: T) {
         interrupt::without(|| unsafe { write_volatile(self.0.get(), value); });
     }
