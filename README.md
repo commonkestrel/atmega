@@ -67,17 +67,17 @@ fn setup() -> State {
 In this example we are using pin D9 for the LED, and we initialize it to output.
 We need to return something from this function to pass into out loop, usually your `State`.
 
-Now we need a loop. Since the `loop` keyword is already taken, `run` is used instead.
+Now we need a loop. Since the `loop` keyword is already taken, `run()` is used instead.
 ```rust
 fn run(_state: State) {
 
 }
 ```
-`run` needs to take the return value of `setup` as input.
+`run()` needs to take the return value of `setup` as input.
 It is not used in this example, so you can prefix it with `_`.
 
 Now we need to actually blink the LED.
-Add this inside `run`:
+Add this inside `run()`:
 ```rust
 digital_toggle(Pin::D9);
 delay(1000);
