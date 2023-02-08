@@ -1,3 +1,5 @@
+//! Allows easy interactions with important registers in the ATmega328p.
+
 #![allow(non_camel_case_types)]
 use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 

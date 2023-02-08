@@ -1,5 +1,6 @@
 #![no_std]
-#![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core)]
+#![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
 // Used to import environment variables as values other than &'static str
 // CPU_FREQUENCY is imported this way
@@ -15,7 +16,8 @@ pub mod serial;
 pub mod bits;
 pub mod buffer;
 
-#[cfg(feature = "interrupt-macro")]
+#[cfg(any(feature = "interrupt-macro", doc))]
+#[doc(cfg(feature = "interrupt-macro"))]
 pub use atmega_macros::interrupt;
 
 #[doc(hidden)]

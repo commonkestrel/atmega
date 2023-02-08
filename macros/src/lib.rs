@@ -80,7 +80,7 @@ impl Interrupt {
 /// Exports the function as the matching interrupt handler
 /// 
 /// # Requirements
-/// Requires the 'abi_avr_interrupt" feature, which can be enabled by adding #![feature(abi_avr_interrupt)] to the top of the file
+/// Requires the "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
 #[proc_macro_attribute]
 pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be called on a function");
