@@ -15,9 +15,18 @@ lto = true
 codegen-units = 1
 opt-level = "z"
 
-[dev-dependencies]
-atmega = { path = "../" }
+[dev-dependencies.atmega]
+path = "../"
+default-features = true
 
 [[example]]
 name = "fade"
 path = "fade.rs"
+
+[[example]]
+name = "serial"
+path = "serial.rs"
+
+[[example]]
+name = "blink"
+path = "blink.rs"

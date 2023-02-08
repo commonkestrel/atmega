@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(abi_avr_interrupt)]
 
 use atmega::prelude::*;
 
@@ -15,10 +14,7 @@ struct State {
 /// Used to initialize pins and peripherals.
 /// Equivalent to the `setup` function in the Arduino language.
 fn setup() -> State {
-    Serial::begin(9600);
-
     pin_mode(Pin::D9, PinMode::OUTPUT);
-
     State { analog: 0, direction: true }
 }
 
@@ -26,6 +22,7 @@ fn setup() -> State {
 /// Equivalent to the `loop` function in the Arduino language.
 fn run(state: &mut State) {
     analog_write(Pin::D9, state.analog);
+    
     if state.analog == 0 {
         state.direction = true;
     } else if state.analog == 255 {
@@ -37,6 +34,6 @@ fn run(state: &mut State) {
     } else {
         state.analog -= 1;
     }
-    println!("{}", millis());
+
     delay(10);
 }

@@ -123,5 +123,6 @@ pub fn _print(args: ::core::fmt::Arguments) {
 #[allow(non_snake_case)]
 #[export_name = "__vector_18"]
 pub unsafe extern "avr-interrupt" fn USART_RX() {
+    crate::wiring::digital_write(crate::wiring::Pin::D9, true);
     USART_BUFFER.operate(|mut buf| { buf.write(UDR0::read()); buf });
 }
