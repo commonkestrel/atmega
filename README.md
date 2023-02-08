@@ -39,8 +39,8 @@ To start add this:
 #![no_main]
 ```
 I know, it already looks scary, but stay with me.
-All this does is tell the compiler to link to [libcore](https://doc.rust-lang.org/core/) instead of [libstd](https://doc.rust-lang.org/std/).
-We need to do this because [libstd](https://doc.rust-lang.org/std/) requires certain C dependencies as well as an allocator, which AVR targets do not have.
+All this does is tell the compiler to link to [`libcore`](https://doc.rust-lang.org/core/) instead of [`libstd`](https://doc.rust-lang.org/std/).
+We need to do this because [`libstd`](https://doc.rust-lang.org/std/) requires certain C dependencies as well as an allocator, which AVR targets do not have.
 
 However, this does mean that certain data types, functions, and macros like `Vec`, `String`, and `format!` will be unavailable, since these require an allocator.
 
