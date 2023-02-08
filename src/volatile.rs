@@ -28,6 +28,14 @@ impl<T: Copy> Volatile<T> {
     pub fn operate<F: Fn(T) -> T>(&self, operator: F) {
         interrupt::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
+
+    pub fn as_mut<F, R>(&self, operation: F)  -> R
+    where F: Fn(&mut T) -> R
+    {
+        interrupt::without(|| {
+            unsafe { operation(&mut *self.0.get()) }
+        })
+    }
 }
 
 unsafe impl<T: Copy + Send> Send for Volatile<T> {}
