@@ -29,6 +29,7 @@ After this we install [`ravedude`](https://github.com/Rahix/avr-hal/tree/main/ra
 
 ## Examples
 Let's start with a classic: blinking an LED: 
+
 [`atmega-template`](https://github.com/commonkestrel/atmega-template) includes a small blink example, but we're going to recreate it here.
 This program should go in `src/main.rs`, like usual.
 
