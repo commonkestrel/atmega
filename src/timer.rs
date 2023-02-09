@@ -1,4 +1,4 @@
-use crate::CPU_FREQUENCY;
+use crate::constants::CPU_FREQUENCY;
 #[cfg(feature = "millis")]
 use crate::volatile::Volatile;
 use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TIMSK0, TCNT0 };
@@ -6,14 +6,12 @@ use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TIMSK0, TCNT0 };
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
 
-pub fn read_timer1() -> u16 {
-    let (high_byte, low_byte) = unsafe {
-        // In order to read 16 bit registers on the ATmega328p
-        // you need to read the low byte before the high byte
-        let low_byte = TCNT1L::read();
-        let high_byte = TCNT1H::read();
-        (high_byte, low_byte)
-    };
+pub fn read_timer1() -> u16 {        
+    // In order to read 16 bit registers on the ATmega328p
+    // you need to read the low byte before the high byte
+    let low_byte =  unsafe { TCNT1L::read() };
+    let high_byte = unsafe { TCNT1H::read() };
+
     ((high_byte as u16) << 8) | low_byte as u16 // Use both bytes to construct a u16
 }
 

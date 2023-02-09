@@ -39,7 +39,7 @@ pub fn init() {
         TCCR2A::WGM20.set();
         
         // set a2d prescaler so we are inside the desired 50-200 KHz range
-        let adp = match crate::CPU_FREQUENCY {
+        let adp = match crate::constants::CPU_FREQUENCY {
             16_000_000.. => (true,  true,  true),  // 16 MHz / 128 = 125 KHz
             8_000_000..  => (false, true,  true),  // 8 MHz / 64 = 125 KHz
             4_000_000..  => (true,  false, true),  // 4 MHz / 32 = 125 KHz

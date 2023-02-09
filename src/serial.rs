@@ -1,4 +1,15 @@
-use crate::CPU_FREQUENCY;
+//! Functions and macros that allow for easy serial communication via the ATmega328p USART
+//! 
+//! # Examples
+//! ```no_run
+//! use atmega::serial::*;
+//! 
+//! Serial::begin(9600);
+//! println!("hello world!");
+//! ```
+//! Initializes the USART to a baud rate of 9600 and transmits "hello world"
+
+use crate::constants::CPU_FREQUENCY;
 use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
 use core::fmt::Write;
 
