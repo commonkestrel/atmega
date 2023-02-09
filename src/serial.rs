@@ -24,13 +24,10 @@ use crate::volatile::Volatile;
 #[doc(cfg(feature = "serial-buffer"))]
 static USART_BUFFER: Volatile<Buffer> = Volatile::new(Buffer::new());
 
+/// Easy interface with the USART with `core::fmt::Write` implemented.
 pub struct Serial {}
 
 impl Serial {
-    pub const fn new() -> Self {
-        Serial {}
-    }
-
     /// Initialize serial at the given baud rate
     pub fn begin(baud: u32) {
         let ubrr = ((CPU_FREQUENCY / (16*baud) as u64)-1) as u16;
@@ -59,14 +56,15 @@ impl Serial {
         }
     }
 
-    pub fn transmit_ready() -> bool {
+    /// Checks if the USART is ready to transmit the next byte.
+    pub fn _transmit_ready() -> bool {
         unsafe { UCSR0A::UDRE0.read_bit() }
     }
 
     /// Transmits byte over serial.
     /// Blocking
     pub fn transmit(byte: u8) {
-        while !Self::transmit_ready() {}
+        while !Self::_transmit_ready() {}
         unsafe { UDR0::write(byte) };
     }
 
@@ -99,8 +97,8 @@ impl Serial {
     /// The total bytes stored in the USART buffer
     #[cfg(any(feature = "serial-buffer", doc))]
     #[doc(cfg(feature = "serial-buffer"))]
-    pub fn available() -> u8 {
-        USART_BUFFER.read().available()
+    pub fn len() -> u8 {
+        USART_BUFFER.read().len()
     }
 
     /// Read the byte at the front of the USART buffer
@@ -120,11 +118,32 @@ impl Write for Serial {
     }
 }
 
+
+/// Prints to the serial output.
+/// `Serial::begin()` must have been called previously or the program will freeze.
+/// Uses the same syntax as [`std::print`](https://doc.rust-lang.org/std/macro.print.html). See [`std::fmt`](https://doc.rust-lang.org/std/fmt/index.html) for more info.
+/// 
+/// # Example
+/// ```no_run
+/// Serial::begin(9600);
+/// let var = 42;
+/// println!("{} ", var);
+/// ```
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::serial::_print(format_args!($($arg)*)));
 }
 
+/// Prints to the serial output, with a newline.
+/// `Serial::begin()` must have been called previously or the program will freeze.
+/// Uses the same syntax as [`std::println`](https://doc.rust-lang.org/std/macro.println.html). See [`std::fmt`](https://doc.rust-lang.org/std/fmt/index.html) for more info.
+/// 
+/// # Example
+/// ```no_run
+/// Serial::begin(9600);
+/// let var = 42;
+/// println!("var = {}", var);
+/// ```
 #[macro_export]
 macro_rules! println {
     () => ($crate::print!("\n"));
@@ -133,7 +152,7 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
-    Serial::new().write_fmt(args).unwrap();
+    (Serial{}).write_fmt(args).unwrap();
 }
 
 #[cfg(feature = "serial-buffer")]

@@ -1,6 +1,6 @@
 //! A dead simple safe(ish) way to communicate to and from interrupts with global statics.
 
-use crate::interrupt;
+use crate::interrupts;
 use core::cell::UnsafeCell;
 use core::ptr::{ write_volatile, read_volatile };
 
@@ -11,29 +11,30 @@ use core::ptr::{ write_volatile, read_volatile };
 pub struct Volatile<T: Copy>(UnsafeCell<T>);
 
 impl<T: Copy> Volatile<T> {
+    /// Creates a new `Volatile` that contains the given data.
     pub const fn new(value: T) -> Volatile<T> {
         Volatile(UnsafeCell::new(value))
     }
     
     /// Reads the stored data.
     pub fn read(&self) -> T {
-        interrupt::without(|| unsafe { read_volatile(self.0.get()) })
+        interrupts::without(|| unsafe { read_volatile(self.0.get()) })
     }
     
     /// Overwrites the stored data.
     pub fn write(&self, value: T) {
-        interrupt::without(|| unsafe { write_volatile(self.0.get(), value); });
+        interrupts::without(|| unsafe { write_volatile(self.0.get(), value); });
     }
 
     /// Reads the value and writes the output of the operation.
     pub fn operate<F: Fn(T) -> T>(&self, operator: F) {
-        interrupt::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
+        interrupts::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
 
     /// Consumes the wrapper and returns the data contained
     /// Safety
     pub fn into_inner(self) -> T {
-        interrupt::without(|| self.0.into_inner())
+        interrupts::without(|| self.0.into_inner())
     }
     
     /// Passes the data of type `T` and passes it into the given function as `&mut T`.
@@ -41,7 +42,7 @@ impl<T: Copy> Volatile<T> {
     pub fn as_mut<F, R>(&self, operation: F) -> R
     where F: Fn(&mut T) -> R
     {
-        interrupt::without(|| {
+        interrupts::without(|| {
             unsafe { operation(&mut *self.0.get()) }
         })
     }

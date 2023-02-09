@@ -1,13 +1,16 @@
+//! A fast, easy, recognizable interface for the ATmega328p
+
 #![no_std]
 #![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![warn(missing_docs)]
 
 pub mod wiring;
 pub mod registers;
 pub mod prelude;
-pub mod timer;
+pub mod timers;
 pub mod volatile;
-pub mod interrupt;
+pub mod interrupts;
 pub mod constants;
 pub mod serial;
 pub mod bits;
@@ -19,7 +22,7 @@ pub use atmega_macros::interrupt;
 
 #[doc(hidden)]
 pub fn init() {
-    wiring::init();
+    wiring::_init();
 }
 
 /// Takes two arguments, `setup()` and `run()`.
@@ -39,11 +42,13 @@ macro_rules! run {
     }
 }
 
+/// Panic handler.
 #[panic_handler]
 pub fn panic(info: &core::panic::PanicInfo) -> ! {
     println!("panic: {}", info);
     loop {}
 }
 
+/// Defines the exception handling personality.
 #[lang = "eh_personality"]
 pub extern "C" fn eh_personality() {}

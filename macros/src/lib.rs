@@ -77,10 +77,26 @@ impl Interrupt {
     }
 }
 
-/// Exports the function as the matching interrupt handler
+/// Exports the function as the matching interrupt handler.
+/// Available interrupts can be found at `atmega::interrupt::Interrupt`.
 /// 
 /// # Requirements
-/// Requires the "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
+/// Requires the experimental "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
+/// 
+/// # Example
+/// ```
+/// #[interrupt]
+/// unsafe fn ANALOG_COMP() {
+///     ...
+/// }
+/// ```
+/// This turns into this:
+/// ```
+/// #[export_name = "__vector_23"]
+/// pub extern "avr-interrupt" unsafe fn ANALOG_COMP() {
+///     ...
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be called on a function");

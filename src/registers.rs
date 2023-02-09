@@ -1,8 +1,12 @@
 //! Allows easy interactions with important registers in the ATmega328p.
 
 #![allow(non_camel_case_types)]
+#![allow(missing_docs)]
+
 use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 
+/// Generic utilies for interacting with registers, like reading, writing, operating, etc...
+/// Meant to be applied to an `enum` with the varients used for individual bits for generating a bit mask
 pub trait Register: Sized + Clone + Copy + Into<u8>
                     + ops::BitAnd<u8, Output=u8>
                     + ops::BitAndAssign<u8>
@@ -70,7 +74,7 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
 }
 
-/// Initialize a type as a Register.
+/// Implement traits needed for a type, usually an `enum`, to implement `Register`.
 /// 
 /// Syntax: `register!(<type>[<address>],);`
 macro_rules! register {

@@ -1,11 +1,14 @@
+//! Utilities for interacting with pins
+
 // Some documentation taken from https://github.com/arduino/ArduinoCore-avr/blob/master/cores/arduino/wiring.c
 
 use crate::registers::*;
 
-pub fn init() {
+/// Initializes timers for PWM
+pub fn _init() {
     unsafe {
         // this needs to be called before setup() or some functions won't work there
-        crate::interrupt::enable();
+        crate::interrupts::enable();
 
         // timer 0 is also used for fast hardware pwm
         // (using phase-correct PWM would mean that timer 0 overflowed half as often
@@ -62,6 +65,7 @@ pub fn init() {
     }
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Pin {
     D0,
@@ -187,6 +191,7 @@ impl core::fmt::Display for Pin {
 }
 
 #[derive(Debug, Clone)]
+#[allow(missing_docs)]
 #[allow(non_camel_case_types)]
 pub enum PinMode {
     INPUT,
@@ -194,7 +199,9 @@ pub enum PinMode {
     OUTPUT,
 }
 
+/// A high value, usually 5V
 pub const HIGH: bool = true;
+/// A low value, usually 0V
 pub const LOW: bool = false;
 
 #[derive(Debug, Clone)]
@@ -362,6 +369,7 @@ impl Registers {
     }
 }
 
+/// Sets the mode of the given pin to the given value.
 pub fn pin_mode(pin: Pin, value: PinMode) {
     let register = Registers::from(pin.clone()).ddrx();
     match value {
@@ -377,16 +385,19 @@ pub fn pin_mode(pin: Pin, value: PinMode) {
     }
 }
 
+/// Sets the given pin to HIGH if `true`, LOW if `false`
 pub fn digital_write(pin: Pin, value: bool) {
     let register = Registers::from(pin).portx();
     unsafe { register.set_value(value); }
 }
 
+/// Reads the voltage of the given pin, returning `true` if it is above 3V on a 5V chip or above 2V on a 3.3V chip.
 pub fn digital_read(pin: Pin) -> bool {
     let register = Registers::from(pin).pinx();
     unsafe { register.read() }
 }
 
+/// Toggles the output at the given pin, equivalent to a not (`!`) operation
 pub fn digital_toggle(pin: Pin) {
     let register = Registers::from(pin).portx();
     unsafe { register.toggle(); }
