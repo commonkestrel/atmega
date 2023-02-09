@@ -2,16 +2,13 @@
 #![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-// Used to import environment variables as values other than &'static str
-// CPU_FREQUENCY is imported this way
-include!(concat!(env!("OUT_DIR"), "/constants.rs")); 
-
 pub mod wiring;
 pub mod registers;
 pub mod prelude;
 pub mod timer;
 pub mod volatile;
 pub mod interrupt;
+pub mod constants;
 pub mod serial;
 pub mod bits;
 pub mod buffer;
