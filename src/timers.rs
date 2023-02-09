@@ -1,3 +1,5 @@
+//! Utilities for reading and controlling time
+
 use crate::constants::CPU_FREQUENCY;
 #[cfg(feature = "millis")]
 use crate::volatile::Volatile;
@@ -6,6 +8,7 @@ use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TIMSK0, TCNT0 };
 const MICROS: u64 = 100000;
 const MILLIS: u64 = 1000;
 
+/// Reads the current value of Timer/Counter1
 pub fn read_timer1() -> u16 {        
     // In order to read 16 bit registers on the ATmega328p
     // you need to read the low byte before the high byte
@@ -72,7 +75,8 @@ static SYSTICK: Volatile<u64> = Volatile::new(0);
 
 /// The total milliseconds since system boot.
 #[inline]
-#[cfg(feature = "millis")]
+#[cfg(any(feature = "millis", doc))]
+#[doc(cfg(feature = "millis"))]
 pub fn millis() -> u64 {
     SYSTICK.read().wrapping_mul(64 * 256) / (CPU_FREQUENCY/MILLIS)
 }
