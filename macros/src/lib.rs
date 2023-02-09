@@ -78,7 +78,7 @@ impl Interrupt {
 }
 
 /// Exports the function as the matching interrupt handler.
-/// Available interrupts can be found at `atmega::interrupt::Interrupt`.
+/// Available interrupts can be found at [`atmega::interrupts::Interrupt`].
 /// 
 /// # Requirements
 /// Requires the experimental "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
@@ -97,6 +97,8 @@ impl Interrupt {
 ///     ...
 /// }
 /// ```
+///
+/// [`atmega::interrupts::Interrupt`]: enum@crate::interrupts::Interrupt
 #[proc_macro_attribute]
 pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be called on a function");

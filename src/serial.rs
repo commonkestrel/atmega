@@ -68,6 +68,7 @@ impl Serial {
         unsafe { UDR0::write(byte) };
     }
 
+    /// Checks if the USART has a byte to read.
     #[cfg(any(not(feature = "serial-buffer"), doc))]
     #[doc(cfg(not(feature = "serial-buffer")))]
     pub fn recieve_ready() -> bool {
