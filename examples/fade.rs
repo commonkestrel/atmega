@@ -10,16 +10,11 @@ struct State {
     direction: bool, // true for up, false for down
 }
 
-/// Called once.
-/// Used to initialize pins and peripherals.
-/// Equivalent to the `setup` function in the Arduino language.
 fn setup() -> State {
     pin_mode(Pin::D9, PinMode::OUTPUT);
     State { analog: 0, direction: true }
 }
 
-/// Called in a loop indefinitly.
-/// Equivalent to the `loop` function in the Arduino language.
 fn run(state: &mut State) {
     analog_write(Pin::D9, state.analog);
     

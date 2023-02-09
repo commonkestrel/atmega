@@ -6,10 +6,17 @@ edition = "2021"
 build = "build.rs"
 readme = "README.md"
 repository = "https://github.com/commonkestrel/atmega"
-keywords = ["atmega", "arduino", "avr", "uno"]
-categories = ["no-std", "embedded"]
+description = "A fast, easy, recognizable interface for the ATmega328p"
+keywords = ["atmega", "arduino", "avr", "uno", "atmega328p"]
+categories = ["no-std", "no-std::no-alloc", "embedded"]
 license = "MIT"
 exclude = ["/.vscode"]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [profile.dev]
 opt-level = 2
@@ -33,4 +40,22 @@ millis = []
 ## The serial buffer consumes all incoming serial traffic as well as the USART_RX interrupt
 serial-buffer = []
 
+## The interrupts macro requires compilation of the syn, quote, and proc_macro2 crates
 interrupt-macro = ["atmega_macros"]
+
+[[example]]
+name = "fade"
+path = "examples/fade.rs"
+
+[[example]]
+name = "serial"
+path = "examples/serial.rs"
+
+[[example]]
+name = "blink"
+path = "examples/blink.rs"
+
+[[example]]
+name = "interrupt"
+path = "examples/interrupt.rs"
+required-features = ["interrupt-macro"]
