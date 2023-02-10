@@ -86,8 +86,14 @@ pub enum Pin {
     A1,
     A2,
     A3,
+    #[cfg(not(feature = "twowire"))]
     A4,
+    #[cfg(not(feature = "twowire"))]
     A5,
+    #[cfg(feature = "twowire")]
+    SDA,
+    #[cfg(feature = "twowire")]
+    SCL,
 }
 
 impl Pin {
@@ -177,8 +183,14 @@ impl From<u8> for Pin {
             15 => Self::A1,
             16 => Self::A2,
             17 => Self::A3,
+            #[cfg(not(feature = "twowire"))]
             18 => Self::A4,
+            #[cfg(not(feature = "twowire"))]
             19 => Self::A5,
+            #[cfg(feature = "twowire")]
+            18 => Self::SDA,
+            #[cfg(feature = "twowire")]
+            19 => Self::SCL,
             _ => unreachable!(),
         }
     }
@@ -232,8 +244,14 @@ impl From<Pin> for Registers {
             Pin::A1  => Registers::C(1),
             Pin::A2  => Registers::C(2),
             Pin::A3  => Registers::C(3),
+            #[cfg(not(feature = "twowire"))]
             Pin::A4  => Registers::C(4),
+            #[cfg(not(feature = "twowire"))]
             Pin::A5  => Registers::C(5),
+            #[cfg(feature = "twowire")]
+            Pin::SDA => Registers::C(4),
+            #[cfg(feature = "twowire")]
+            Pin::SCL => Registers::C(5),
         }
     }
 }
@@ -419,8 +437,14 @@ pub fn analog_read(pin: Pin) -> u16 {
         Pin::A1 => (false, false, true),
         Pin::A2 => (false, true,  false),
         Pin::A3 => (false, true,  true),
+        #[cfg(not(feature = "twowire"))]
         Pin::A4 => (true,  false, false),
+        #[cfg(not(feature = "twowire"))]
         Pin::A5 => (true,  false, true),
+        #[cfg(feature = "twowire")]
+        Pin::SDA => (true, false, false),
+        #[cfg(feature = "twowire")]
+        Pin::SCL => (true, false, true),
         _ => unreachable!(),
     };
 

@@ -3,8 +3,10 @@
 //! Implementation and some documentation taken from the official [source code](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
 
 use core::ptr::{ read_volatile, write_volatile };
-use crate::registers::{ Register, TWSR, TWCR };
+use crate::registers::{ Register, TWSR, TWCR, TWBR };
 use crate::wiring::{ digital_write, Pin };
+use crate::constants::CPU_FREQUENCY;
+use crate::volatile::Volatile;
 use crate::buffer::Buffer;
 
 enum State {
@@ -15,7 +17,7 @@ enum State {
     Stx
 }
 
-const TWI_FREQ: u32 = 100000;
+const TWI_FREQ: u32 = CPU_FREQUENCY/;
 
 const TWI_BUFFER_LENGTH: usize = 32;
 
@@ -45,6 +47,7 @@ pub fn twi_init() {
     unsafe {
         TWSR::TWPS0.clear();
         TWSR::TWPS1.clear();
+        TWBR::write(((CPU_FREQUENCY / TWI_FREQ) - 16) / 2);
         
         // Enable TWI interface
         TWCR::TWEN.set();
