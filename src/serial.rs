@@ -22,7 +22,7 @@ use crate::volatile::Volatile;
 
 #[cfg(any(feature = "serial-buffer", doc))]
 #[doc(cfg(feature = "serial-buffer"))]
-static USART_BUFFER: Volatile<Buffer> = Volatile::new(Buffer::new());
+static USART_BUFFER: Volatile<Buffer<32>> = Volatile::new(Buffer::new());
 
 /// Easy interface with the USART with `core::fmt::Write` implemented.
 pub struct Serial {}
@@ -53,6 +53,10 @@ impl Serial {
             // Enable Reciever and Transmitter
             UCSR0B::RXEN0.set();
             UCSR0B::TXEN0.set();
+
+            // Enable USART_RX interrupt
+            #[cfg(feature = "serial-buffer")]
+            UCSR0B::RXCIE0.set();
         }
     }
 
@@ -152,8 +156,10 @@ macro_rules! println {
 }
 
 #[doc(hidden)]
+#[allow(unused_must_use)]
 pub fn _print(args: ::core::fmt::Arguments) {
-    (Serial{}).write_fmt(args).unwrap();
+    // Calling unwrap adds about 300 bytes, which is not necessary with no reason to panic
+    (Serial{}).write_fmt(args);
 }
 
 #[cfg(feature = "serial-buffer")]
