@@ -674,6 +674,43 @@ pub enum ADCH {
     
 }
 
+/// TWI Status Register
+#[derive(Clone, Copy)]
+pub enum TWSR {
+    TWPS0 = 0,
+    TWPS1 = 1,
+    TWS3 = 3,
+    TWS4 = 4,
+    TWS5 = 5,
+    TWS6 = 6,
+    TWS7 = 7,
+}
+
+/// TWI Data Register
+#[derive(Clone, Copy)]
+pub enum TWDR {
+    TWD0 = 0,
+    TWD1 = 1,
+    TWD2 = 2,
+    TWD3 = 3,
+    TWD4 = 4,
+    TWD5 = 5,
+    TWD6 = 6,
+    TWD7 = 7,
+}
+
+/// TWI Control Register
+#[derive(Clone, Copy)]
+pub enum TWCR {
+    TWIE  = 0,
+    TWEN  = 2,
+    TWWC  = 3,
+    TWSTO = 4,
+    TWSTA = 5,
+    TWEA  = 6,
+    TWINT = 7,
+}
+
 register!(
     SREG[0x3F],
     ADCSRA[0x7A], 
@@ -720,6 +757,9 @@ register!(
     UDR0[0xC6],
     ADCL[0x78],
     ADCH[0x79],
+    TWSR[0xB9],
+    TWDR[0xBB],
+    TWCR[0xBC],
 );
 
 /// Port B maps to pins `D13`-`D8`,
