@@ -43,6 +43,8 @@ serial-buffer = []
 ## The interrupts macro requires compilation of the syn, quote, and proc_macro2 crates
 interrupt-macro = ["atmega_macros"]
 
+twowire = []
+
 [[example]]
 name = "fade"
 path = "examples/fade.rs"
