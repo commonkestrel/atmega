@@ -3,7 +3,8 @@
 //! Implementation and some documentation taken from the official [source code](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
 
 use core::ptr::{ read_volatile, write_volatile };
-use crate::registers::{ Register, TWSR };
+use crate::registers::{ Register, TWSR, TWCR };
+use crate::wiring::{ digital_write, Pin };
 use crate::buffer::Buffer;
 
 enum State {
@@ -44,5 +45,12 @@ pub fn twi_init() {
     unsafe {
         TWSR::TWPS0.clear();
         TWSR::TWPS1.clear();
+        
+        // Enable TWI interface
+        TWCR::TWEN.set();
+        
+        // Activate internal pullups
+        digital_write(Pin::SDA, true);
+        digital_write(Pin::SCL, true);
     }
 }
