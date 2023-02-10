@@ -2,30 +2,28 @@
 //! 
 //! This is an adaptation of the `USART_BUFFER` from [`avr_328p_usart`](https://github.com/johncobb/avr_328p_usart)
 
-const BUFFER_SIZE: usize = 64;
-
 /// Byte buffer of length 64
 #[derive(Debug, Clone, Copy)]
-pub struct Buffer {
+pub struct Buffer<const SIZE: usize> {
     head: usize,
     tail: usize,
-    buffer: [u8; BUFFER_SIZE],
+    buffer: [u8; SIZE],
 }
 
-impl Buffer {
+impl<const SIZE: usize> Buffer<SIZE> {
     /// Creates a new buffer set to all 0s
-    pub const fn new() -> Buffer {
+    pub const fn new() -> Buffer<SIZE> {
         Buffer {
             head: 0,
             tail: 0,
-            buffer: [0; BUFFER_SIZE],
+            buffer: [0; SIZE],
         }
     }
 
     /// Writes a byte to the head of the buffer.
     /// Does not do anything if the buffer is full.
     pub fn write(&mut self, value: u8) {
-        let i = (self.head + 1) % BUFFER_SIZE;
+        let i = (self.head + 1) % SIZE;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
@@ -39,7 +37,7 @@ impl Buffer {
 
     /// Returns the total bytes stored in the buffer.
     pub fn len(&self) -> u8 {
-        ((BUFFER_SIZE + self.head - self.tail) % BUFFER_SIZE) as u8
+        ((SIZE + self.head - self.tail) % SIZE) as u8
     }
 
     /// Reads the byte at the front of the buffer.
@@ -51,13 +49,13 @@ impl Buffer {
          }
 
          let value = self.buffer[self.tail];
-         self.tail = (self.tail + 1) % BUFFER_SIZE;
+         self.tail = (self.tail + 1) % SIZE;
          Some(value)
     }
 
     /// Sets all bytes in the buffer to 0.
     pub fn clear(&mut self) {
-        self.buffer = [0; BUFFER_SIZE];
+        self.buffer = [0; SIZE];
         self.head = 0;
         self.tail = 0;
     }
