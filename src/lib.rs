@@ -15,13 +15,14 @@ pub mod constants;
 pub mod serial;
 pub mod bits;
 pub mod buffer;
+pub mod drivers;
 
 #[cfg(any(feature = "interrupt-macro", doc))]
 #[doc(cfg(feature = "interrupt-macro"))]
 pub use atmega_macros::interrupt;
 
 #[doc(hidden)]
-pub fn init() {
+pub fn _init() {
     wiring::_init();
 }
 
@@ -34,7 +35,7 @@ macro_rules! run {
     ($setup: ident, $loop: ident) => {
         #[no_mangle]
         pub extern "C" fn main() -> ! {
-            $crate::init();
+            $crate::_init();
             
             let mut state = $setup();
             loop{ $loop(&mut state) }
