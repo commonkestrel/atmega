@@ -4,5 +4,5 @@ mod util;
 
 /// Initialize TWI interface 
 pub fn begin() {
-
+    util::twi_init();
 }
