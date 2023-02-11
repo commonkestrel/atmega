@@ -711,6 +711,32 @@ pub enum TWCR {
     TWINT = 7,
 }
 
+/// TWI Bit Rate Register
+#[derive(Clone, Copy)]
+pub enum TWBR {
+    TWBR0 = 0,
+    TWBR1 = 1,
+    TWBR2 = 2,
+    TWBR3 = 3,
+    TWBR4 = 4,
+    TWBR5 = 5,
+    TWBR6 = 6,
+    TWBR7 = 7,
+}
+
+/// TWI (Slave) Address Register
+#[derive(Clone, Copy)]
+pub enum TWAR {
+    TWGCE = 0,
+    TWA0  = 1,
+    TWA1  = 2,
+    TWA2  = 3,
+    TWA3  = 4,
+    TWA4  = 5,
+    TWA5  = 6,
+    TWA6  = 7,
+}
+
 register!(
     SREG[0x3F],
     ADCSRA[0x7A], 
@@ -760,6 +786,8 @@ register!(
     TWSR[0xB9],
     TWDR[0xBB],
     TWCR[0xBC],
+    TWBR[0xB8],
+    TWAR[0xBA],
 );
 
 /// Port B maps to pins `D13`-`D8`,
