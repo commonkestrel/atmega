@@ -81,6 +81,16 @@ pub fn millis() -> u64 {
     SYSTICK.read().wrapping_mul(64 * 256) / (CPU_FREQUENCY/MILLIS)
 }
 
+/// The number of microseconds that have passed since system boot.
+/// Has a precision of 4us on a 16MHz chip.
+#[inline]
+#[cfg(any(feature = "millis", doc))]
+#[doc(cfg(feature = "millis"))]
+pub fn micros() -> u64 {
+    let timer = unsafe { TCNT0::read() };
+    (SYSTICK.read().wrapping_mul(64 * 256) / (CPU_FREQUENCY/MICROS)) + (timer as u64 * 4)
+}
+
 #[cfg(feature = "millis")]
 #[doc(hidden)]
 #[inline(always)]
