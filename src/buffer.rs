@@ -36,8 +36,8 @@ impl<const SIZE: usize> Buffer<SIZE> {
     }
 
     /// Returns the total bytes stored in the buffer.
-    pub fn len(&self) -> u8 {
-        ((SIZE + self.head - self.tail) % SIZE) as u8
+    pub fn len(&self) -> usize {
+        (SIZE + self.head - self.tail) % SIZE
     }
 
     /// Reads the byte at the front of the buffer.
@@ -58,5 +58,25 @@ impl<const SIZE: usize> Buffer<SIZE> {
         self.buffer = [0; SIZE];
         self.head = 0;
         self.tail = 0;
+    }
+}
+
+impl<const SIZE: usize> core::ops::Index<usize> for Buffer<SIZE> {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index >= self.len() {
+            panic!("Index out of range! Index of {} into Buffer of length {}.", index, self.len());
+        }
+        let i = self.tail.wrapping_add(index) % SIZE;
+        &self.buffer[i]
+    }
+}
+
+impl<const SIZE: usize> Iterator for Buffer<SIZE> {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.read()
     }
 }
