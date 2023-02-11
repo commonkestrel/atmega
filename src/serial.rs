@@ -103,7 +103,7 @@ impl Serial {
     #[cfg(any(feature = "serial-buffer", doc))]
     #[doc(cfg(feature = "serial-buffer"))]
     pub fn len() -> u8 {
-        USART_BUFFER.read().len()
+        USART_BUFFER.read().len() as u8
     }
 
     /// Read the byte at the front of the USART buffer
