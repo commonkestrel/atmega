@@ -8,14 +8,15 @@
 pub mod wiring;
 pub mod registers;
 pub mod prelude;
-pub mod timers;
+pub mod time;
 pub mod volatile;
 pub mod interrupts;
 pub mod constants;
 pub mod serial;
 pub mod bits;
 pub mod buffer;
-pub mod drivers;
+pub mod libraries;
+pub mod util;
 
 #[cfg(any(feature = "interrupt-macro", doc))]
 #[doc(cfg(feature = "interrupt-macro"))]
