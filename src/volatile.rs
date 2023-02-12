@@ -53,5 +53,11 @@ impl<T: Copy> Volatile<T> {
     }
 }
 
+impl<T: Copy + Default> Default for Volatile<T> {
+    fn default() -> Self {
+        Volatile::new(T::default())
+    }
+}
+
 unsafe impl<T: Copy + Send> Send for Volatile<T> {}
 unsafe impl<T: Copy + Send + Sync> Sync for Volatile<T> {}
