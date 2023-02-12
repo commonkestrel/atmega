@@ -16,7 +16,6 @@ pub mod serial;
 pub mod bits;
 pub mod buffer;
 pub mod libraries;
-pub mod util;
 
 #[cfg(any(feature = "interrupt-macro", doc))]
 #[doc(cfg(feature = "interrupt-macro"))]
