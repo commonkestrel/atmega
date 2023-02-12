@@ -40,6 +40,11 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
 
     #[inline(always)]
+    fn bv(&self) -> u8 {
+        1 << self.bit()
+    }
+
+    #[inline(always)]
     unsafe fn read_bit(&self) -> bool {
         0 < Self::read() & (1 << self.bit())
     }
