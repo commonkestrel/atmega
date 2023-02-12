@@ -1,8 +1,8 @@
-//! Simple implementation of a byte buffer of length 64.
+//! Simple implementation of a byte buffer with a variable length.
 //! 
 //! This is an adaptation of the `USART_BUFFER` from [`avr_328p_usart`](https://github.com/johncobb/avr_328p_usart)
 
-/// Byte buffer of length 64
+/// Byte buffer of variable length
 #[derive(Debug, Clone, Copy)]
 pub struct Buffer<const SIZE: usize> {
     head: usize,
@@ -11,6 +11,9 @@ pub struct Buffer<const SIZE: usize> {
 }
 
 impl<const SIZE: usize> Buffer<SIZE> {
+    /// Maximum size of the buffer
+    pub const MAX_SIZE: usize = SIZE;
+
     /// Creates a new buffer set to all 0s
     #[inline(always)]
     pub const fn new() -> Buffer<SIZE> {
@@ -52,6 +55,11 @@ impl<const SIZE: usize> Buffer<SIZE> {
          let value = self.buffer[self.tail];
          self.tail = (self.tail + 1) % SIZE;
          Some(value)
+    }
+
+    /// Returns `true` if the buffer contains no bytes.
+    pub fn is_empty(&self) -> bool {
+        self.head == self.tail
     }
 
     /// Sets all bytes in the buffer to 0.
