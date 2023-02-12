@@ -1,7 +1,7 @@
 //! Utilities for reading and controlling time
 
 use crate::constants::CPU_FREQUENCY;
-use crate::registers::{ Register, TCNT1L, TCNT1H, TIFR0, TIMSK0, TCNT0 };
+use crate::registers::{ Register, TCNT0 };
 use crate::util::delay::{ _delay_cycles, _delay_us, _delay_ms, MILLIS, MICROS };
 
 #[cfg(feature = "millis")]
