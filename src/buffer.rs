@@ -12,6 +12,7 @@ pub struct Buffer<const SIZE: usize> {
 
 impl<const SIZE: usize> Buffer<SIZE> {
     /// Creates a new buffer set to all 0s
+    #[inline(always)]
     pub const fn new() -> Buffer<SIZE> {
         Buffer {
             head: 0,
@@ -54,6 +55,7 @@ impl<const SIZE: usize> Buffer<SIZE> {
     }
 
     /// Sets all bytes in the buffer to 0.
+    #[inline(always)]
     pub fn clear(&mut self) {
         self.buffer = [0; SIZE];
         self.head = 0;
