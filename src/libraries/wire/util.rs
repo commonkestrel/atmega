@@ -1,7 +1,7 @@
 //! Implementation of the I2C protocol via the Arduino [Wire](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire) library
 //! 
 //! Implementation and some documentation taken from the official [source code](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
-#![allow(non_snake_case, non_upper_case_globals)]
+#![allow(non_snake_case, non_upper_case_globals, dead_code)]
 
 use crate::registers::{ Register, TWSR, TWCR, TWBR, TWAR, TWDR };
 use crate::wiring::{ digital_write, Pin };
