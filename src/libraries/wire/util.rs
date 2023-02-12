@@ -159,10 +159,10 @@ pub fn set_frequency(frequency: u64) {
     unsafe { TWBR::write((((CPU_FREQUENCY / frequency) - 16)/2) as u8); }
 }
 
-pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_BUFFER_LENGTH>> {
+pub fn read_from(address: u8, length: u8, send_stop: bool) -> Result<Buffer<TWI_BUFFER_LENGTH>, ()> {
     // Ensure data will fit into buffer
     if TWI_BUFFER_LENGTH < length as usize {
-        return None;
+        return Err(());
     }
 
     let start_micros = micros();
@@ -171,7 +171,7 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
         while twi_state.read() != State::READY  {
             if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                 twi_handle_timeout(twi_do_reset_on_timeout.read());
-                return None;
+                return Err(());
             }
         }
 
@@ -192,7 +192,7 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
                 TWDR::write(twi_slarw.read());
                 if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                     twi_handle_timeout(twi_do_reset_on_timeout.read());
-                    return None;
+                    return Err(());
                 }
             }
             // enable INTs, but not START
@@ -213,7 +213,7 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
         while twi_state.read() == State::MRX {
             if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                 twi_handle_timeout(twi_do_reset_on_timeout.read());
-                return None;
+                return Err(());
             }
         }
         
@@ -224,7 +224,7 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
             ret.write(twi_master_buffer.read()[i]);
         }
 
-        Some(ret)
+        Ok(ret)
     }
 }
 
