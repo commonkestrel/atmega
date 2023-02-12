@@ -24,6 +24,22 @@ impl<const SIZE: usize> Buffer<SIZE> {
         }
     }
 
+    /// Creates a blank buffer and writes the contents of the passed slice into the buffer.
+    /// 
+    /// # Panics
+    /// Will panic if the length of the slice is larger than the maximum size of the buffer.
+    pub fn from_slice(data: &[u8]) -> Buffer<SIZE> {
+        if data.len() > SIZE {
+            panic!("Slice larger than Buffer MAX_SIZE");
+        }
+        let mut new = Self::new();
+        for byte in data {
+            new.write(byte.clone());
+        }
+
+        new
+    }
+
     /// Writes a byte to the head of the buffer.
     /// Does not do anything if the buffer is full.
     pub fn write(&mut self, value: u8) {
@@ -60,7 +76,7 @@ impl<const SIZE: usize> Buffer<SIZE> {
     /// Returns `true` if the buffer contains no bytes.
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
-        self.head == self.tail
+        self.tail == self.head
     }
 
     /// Returns `true` if the buffer is at it's maximum capacity, meaning any further writes will be ignored.
@@ -69,12 +85,10 @@ impl<const SIZE: usize> Buffer<SIZE> {
         self.len() >= Self::MAX_SIZE
     }
 
-    /// Sets all bytes in the buffer to 0.
+    /// Clears the buffer
     #[inline(always)]
     pub fn clear(&mut self) {
-        self.buffer = [0; SIZE];
-        self.head = 0;
-        self.tail = 0;
+        self.head = self.tail;
     }
 }
 
