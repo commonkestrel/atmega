@@ -5,17 +5,17 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
-pub mod wiring;
-pub mod registers;
-pub mod prelude;
-pub mod time;
-pub mod volatile;
-pub mod interrupts;
-pub mod constants;
-pub mod serial;
 pub mod bits;
+pub mod time;
 pub mod buffer;
+pub mod serial;
+pub mod wiring;
+pub mod prelude;
+pub mod volatile;
+pub mod constants;
 pub mod libraries;
+pub mod registers;
+pub mod interrupts;
 
 #[cfg(any(feature = "interrupt-macro", doc))]
 #[doc(cfg(feature = "interrupt-macro"))]
