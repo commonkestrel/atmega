@@ -6,16 +6,16 @@
 #![warn(missing_docs)]
 
 pub mod bits;
-pub mod time;
 pub mod buffer;
-pub mod serial;
-pub mod wiring;
-pub mod prelude;
-pub mod volatile;
 pub mod constants;
-pub mod libraries;
-pub mod registers;
 pub mod interrupts;
+pub mod libraries;
+pub mod prelude;
+pub mod registers;
+pub mod serial;
+pub mod time;
+pub mod volatile;
+pub mod wiring;
 
 #[cfg(any(feature = "interrupt-macro", doc))]
 #[doc(cfg(feature = "interrupt-macro"))]
