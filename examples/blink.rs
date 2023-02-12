@@ -12,7 +12,7 @@ fn setup() -> State {
     State {}
 }
 
-fn run(_state: State) {
+fn run(_state: &mut State) {
     digital_toggle(Pin::D9);
     delay(1000);
 }
