@@ -58,8 +58,15 @@ impl<const SIZE: usize> Buffer<SIZE> {
     }
 
     /// Returns `true` if the buffer contains no bytes.
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.head == self.tail
+    }
+
+    /// Returns `true` if the buffer is at it's maximum capacity, meaning any further writes will be ignored.
+    #[inline(always)]
+    pub fn is_full(&self) -> bool {
+        self.len() >= Self::MAX_SIZE
     }
 
     /// Sets all bytes in the buffer to 0.
