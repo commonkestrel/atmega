@@ -1,7 +1,7 @@
 //! Implementation of the I2C protocol via the Arduino [Wire](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire) library
 //! 
 //! Implementation and some documentation taken from the official [source code](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
-#![allow(non_snake_case, non_upper_case_globals, dead_code)]
+#![allow(non_snake_case, non_upper_case_globals, dead_code, non_camel_case_types)]
 
 use crate::registers::{ Register, TWSR, TWCR, TWBR, TWAR, TWDR };
 use crate::wiring::{ digital_write, Pin };
@@ -27,68 +27,107 @@ const TW_READ: u8 = 1;
 /// SLA+W address
 const TW_WRITE: u8 = 0;
 
+const TW_STATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
+/// Start contidion transmitted
+
 // TW_MT_xxx : master transmitter
 // TW_MR_xxx : master receiver
 // TW_ST_xxx : slave transmitter
 // TW_SR_xxx : slave receiver
 
-const TW_STATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
-/// Start contidion transmitted
-const TW_START: u8 = 0x08;
-/// Repeated start condition transmitted
-const TW_REP_START: u8 = 0x10;
-/// SLA+W transmitted, ACK received
-const TW_MT_SLA_ACK: u8 = 0x18;
-/// SLA+W transmitted, NACK received
-const TW_MT_SLA_NACK: u8 = 0x20;
-/// Data transmitted, ACK received
-const TW_MT_DATA_ACK: u8 = 0x28;
-/// Data transmitted, NACK, received
-const TW_MT_DATA_NACK: u8 = 0x30;
-/// Arbitration lost in SLA+W or data
-const TW_MT_ARB_LOST: u8 = 0x38;
-/// Arbitration lost in SLA+R or NACK
-const TW_MR_ARB_LOST: u8 = 0x38;
-/// SLA+R transmitted, ACK received
-const TW_MR_SLA_ACK: u8 = 0x40;
-/// RLA+R transmitted, NACK received
-const TW_MR_SLA_NACK: u8 = 0x48;
-/// Data recived, ACK returned
-const TW_MR_DATA_ACK: u8 = 0x50;
-/// Data recived, NACK returned
-const TW_MR_DATA_NACK: u8 = 0x58;
-/// SLA+R received, ACK returned
-const TW_ST_SLA_ACK: u8 = 0xA8;
-/// Artibation lost in SLA+RW, SLA+R recived, ACK returned
-const TW_ST_ARB_LOST_SLA_ACK: u8 = 0xB0;
-/// Data transmitted, ACK received
-const TW_ST_DATA_ACK: u8 = 0xB8;
-/// Data transmitted, NACK received
-const TW_ST_DATA_NACK: u8 = 0xC0;
-/// Last data byte transmitted, ACK received
-const TW_ST_LAST_DATA: u8 = 0xC8;
-/// SLA+W recieved, ACK returned
-const TW_SR_SLA_ACK: u8 = 0x60;
-/// Arbitration lost in SLA+RW, SLA+W received, ACK returned
-const TW_SR_ARB_LOST_SLA_ACK: u8 = 0x68;
-/// General call received, ACK returned
-const TW_SR_GCALL_ACK: u8 = 0x70;
-/// Arbitration lost in SLA+RW, general call received, ACK returned
-const TW_SR_ARB_LOST_GCALL_ACK: u8 = 0x78;
-/// Data received, ACK returned
-const TW_SR_DATA_ACK: u8 = 0x80;
-/// Data received, NACK returned
-const TW_SR_DATA_NACK: u8 = 0x88;
-/// General call data received, ACK returned
-const TW_SR_GCALL_DATA_ACK: u8 = 0x90;
-/// General call data received, NACK returned
-const TW_SR_GCALL_DATA_NACK: u8 = 0x98;
-/// Stop or repeated start condition received while selected
-const TW_SR_STOP: u8 = 0xA0;
-/// No state information available
-const TW_NO_INFO: u8 = 0xF8;
-/// Illegal start or stop condition
-const TW_BUS_ERROR: u8 = 0x00;
+pub enum Flags {
+    /// Start condition transmitted
+    TW_START = 0x08,
+    /// Repeated start condition transmitted
+    TW_REP_START = 0x10,
+    /// SLA+W transmitted, ACK received
+    TW_MT_SLA_ACK = 0x18,
+    /// SLA+W transmitted, NACK received
+    TW_MT_SLA_NACK = 0x20,
+    /// Data transmitted, ACK received
+    TW_MT_DATA_ACK = 0x28,
+    /// Data transmitted, NACK, received
+    TW_MT_DATA_NACK = 0x30,
+    /// Arbitration lost in SLA+W/R, data, or NACK
+    /// TW_MT_ARB_LOST and TW_MR_ARB_LOST share this flag.
+    TW_MT_MR_ARB_LOST = 0x38,
+    /// SLA+R transmitted, ACK received
+    TW_MR_SLA_ACK = 0x40,
+    /// RLA+R transmitted, NACK received
+    TW_MR_SLA_NACK = 0x48,
+    /// Data recived, ACK returned
+    TW_MR_DATA_ACK = 0x50,
+    /// Data recived, NACK returned
+    TW_MR_DATA_NACK = 0x58,
+    /// SLA+R received, ACK returned
+    TW_ST_SLA_ACK = 0xA8,
+    /// Artibation lost in SLA+RW, SLA+R recived, ACK returned
+    TW_ST_ARB_LOST_SLA_ACK = 0xB0,
+    /// Data transmitted, ACK received
+    TW_ST_DATA_ACK = 0xB8,
+    /// Data transmitted, NACK received
+    TW_ST_DATA_NACK = 0xC0,
+    /// Last data byte transmitted, ACK received
+    TW_ST_LAST_DATA = 0xC8,
+    /// SLA+W recieved, ACK returned
+    TW_SR_SLA_ACK = 0x60,
+    /// Arbitration lost in SLA+RW, SLA+W received, ACK returned
+    TW_SR_ARB_LOST_SLA_ACK = 0x68,
+    /// General call received, ACK returned
+    TW_SR_GCALL_ACK = 0x70,
+    /// Arbitration lost in SLA+RW, general call received, ACK returned
+    TW_SR_ARB_LOST_GCALL_ACK = 0x78,
+    /// Data received, ACK returned
+    TW_SR_DATA_ACK = 0x80,
+    /// Data received, NACK returned
+    TW_SR_DATA_NACK = 0x88,
+    /// General call data received, ACK returned
+    TW_SR_GCALL_DATA_ACK = 0x90,
+    /// General call data received, NACK returned
+    TW_SR_GCALL_DATA_NACK = 0x98,
+    /// Stop or repeated start condition received while selected
+    TW_SR_STOP = 0xA0,
+    /// No state information available
+    TW_NO_INFO = 0xF8,
+    /// Illegal start or stop condition
+    TW_BUS_ERROR = 0x00,
+}
+
+impl Flags {
+    fn from_flag(flag: u8) -> Flags {
+        use Flags::*;
+        match flag & TW_STATUS_MASK {
+            0x00 => TW_BUS_ERROR,
+            0x08 => TW_START,
+            0x10 => TW_REP_START,
+            0x18 => TW_MT_SLA_ACK,
+            0x20 => TW_MT_SLA_NACK,
+            0x28 => TW_MT_DATA_ACK,
+            0x30 => TW_MT_DATA_NACK,
+            0x38 => TW_MT_MR_ARB_LOST,
+            0x40 => TW_MR_SLA_ACK,
+            0x48 => TW_MR_SLA_NACK,
+            0x50 => TW_MR_DATA_ACK,
+            0x58 => TW_MR_DATA_NACK,
+            0x60 => TW_SR_SLA_ACK,
+            0x68 => TW_SR_ARB_LOST_SLA_ACK,
+            0x70 => TW_SR_GCALL_ACK,
+            0x78 => TW_SR_ARB_LOST_GCALL_ACK,
+            0x80 => TW_SR_DATA_ACK,
+            0x88 => TW_SR_DATA_NACK,
+            0x90 => TW_SR_GCALL_DATA_ACK,
+            0x98 => TW_SR_GCALL_DATA_NACK,
+            0xA0 => TW_SR_STOP,
+            0xA8 => TW_ST_SLA_ACK,
+            0xB0 => TW_ST_ARB_LOST_SLA_ACK,
+            0xB8 => TW_ST_DATA_ACK,
+            0xC0 => TW_ST_DATA_NACK,
+            0xC8 => TW_ST_LAST_DATA,
+            0xF8 => TW_NO_INFO,
+            _ => unreachable!(),
+        }
+    }
+}
 
 pub const TWI_BUFFER_LENGTH: usize = 32;
 
@@ -250,7 +289,7 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
 
     twi_state.write(State::MTX);
     twi_send_stop.write(send_stop);
-    // Reset error state (0xFF.. no error occured)
+    // Reset error state 0xFF.. no error occured)
     twi_error.write(0xFF);
 
     twi_master_buffer.as_mut(|buf| buf.clear());
@@ -296,8 +335,8 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
 
     match twi_error.read() {
         0xFF => Ok(()),
-        TW_MT_SLA_NACK => Err(WriteError::SlaNack),
-        TW_MT_DATA_NACK => Err(WriteError::DataNack),
+        0x20 => Err(WriteError::SlaNack),
+        0x30 => Err(WriteError::DataNack),
         _ => Err(WriteError::Other)
     }
 }
@@ -412,7 +451,8 @@ pub fn twi_manage_timeout_flag(clear_flag: bool) -> bool {
 #[allow(non_snake_case)]
 #[export_name = "__vector_24"]
 pub unsafe extern "avr-interrupt" fn TWI() {
-    match TWSR::read() & TW_STATUS_MASK {
+    use Flags::*;
+    match Flags::from_flag(TWSR::read()) {
         TW_REP_START => {
             TWDR::write(twi_slarw.read());
             twi_reply(true);
@@ -437,15 +477,15 @@ pub unsafe extern "avr-interrupt" fn TWI() {
             }
         },
         TW_MT_SLA_NACK => { // Address send, NACK received
-            twi_error.write(TW_MT_SLA_NACK);
+            twi_error.write(TW_MT_SLA_NACK as u8);
             twi_stop();
         },
         TW_MT_DATA_NACK => { // Data send, NACK received
-            twi_error.write(TW_MT_DATA_NACK);
+            twi_error.write(TW_MT_DATA_NACK as u8);
             twi_stop();
         },
-        TW_MT_ARB_LOST => { // Lost bus arbitration
-            twi_error.write(TW_MT_ARB_LOST);
+        TW_MT_MR_ARB_LOST => { // Lost bus arbitration
+            twi_error.write(TW_MT_MR_ARB_LOST as u8);
             twi_release_bus();
         },
 
@@ -535,7 +575,7 @@ pub unsafe extern "avr-interrupt" fn TWI() {
             twi_state.write(State::READY);
         },
         TW_BUS_ERROR => {
-            twi_error.write(TW_BUS_ERROR);
+            twi_error.write(TW_BUS_ERROR as u8);
             twi_stop();
         }
         _ => {}
