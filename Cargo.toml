@@ -32,7 +32,7 @@ opt-level = "z"
 atmega_macros = { path = "./macros", optional = true }
 
 [features]
-default = ["millis", "serial-buffer"]
+default = ["millis"]
 
 ## The millis function consumes the TIMER0_OVF interrupt
 millis = []
