@@ -6,16 +6,17 @@
 use crate::registers::{ Register, TWSR, TWCR, TWBR, TWAR, TWDR };
 use crate::wiring::{ digital_write, Pin };
 use crate::constants::CPU_FREQUENCY;
-use crate::util::delay::_delay_us;
+use crate::prelude::delay_micros;
+use crate::volatile::Volatile;
 use crate::buffer::Buffer;
 use crate::time::micros;
 
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum State {
     READY,
     MRX,
     MTX,
-    SRC,
+    SRX,
     STX,
 }
 
@@ -91,10 +92,10 @@ const TW_BUS_ERROR: u8 = 0x00;
 
 pub const TWI_BUFFER_LENGTH: usize = 32;
 
-static mut twi_state: State = State::READY;
-static mut twi_slarw: u8 = 0;
-static mut twi_send_stop: bool = true;    // should the transaction end with a stop
-static mut twi_in_rep_start: bool = false; // in the middle of a repeated start
+static twi_state: Volatile<State> = Volatile::new(State::READY);
+static twi_slarw: Volatile<u8> = Volatile::new(0);
+static twi_send_stop: Volatile<bool> = Volatile::new(true);     // should the transaction end with a stop
+static twi_in_rep_start: Volatile<bool> = Volatile::new(false); // in the middle of a repeated start
 
 // twi_timeout_us > 0 prevents the code from getting stuck in various while loops here
 // if twi_timeout_us == 0 then timeout checking is disabled (the previous Wire lib behavior)
@@ -102,21 +103,21 @@ static mut twi_in_rep_start: bool = false; // in the middle of a repeated start
 // and twi_do_reset_on_timeout could become true
 // to conform to the SMBus standard
 // http://smbus.org/specs/SMBus_3_1_20180319.pdf
-const TWI_TIMEOUT_US: u32 = 0;
-static mut twi_timed_out_flag:bool = false;       // a timeout has been seen
-static mut twi_do_reset_on_timeout: bool = false; // reset the TWI registers on timeout
+static twi_timeout_us: Volatile<u32> = Volatile::new(0);
+static twi_timed_out_flag: Volatile<bool> = Volatile::new(false);       // a timeout has been seen
+static twi_do_reset_on_timeout: Volatile<bool> = Volatile::new(false); // reset the TWI registers on timeout
 
 fn blank_transmit() {}
-static mut twi_on_slave_transmit: fn() = blank_transmit;
+static twi_on_slave_transmit: Volatile<fn()> = Volatile::new(blank_transmit);
 
-fn blank_receive(buf: Buffer<TWI_BUFFER_LENGTH>) {}
-static mut twi_on_slave_receive: fn(Buffer<TWI_BUFFER_LENGTH>) = blank_receive;
+fn blank_receive(_buf: Buffer<TWI_BUFFER_LENGTH>) {}
+static twi_on_slave_receive: Volatile<fn(Buffer<TWI_BUFFER_LENGTH>)> = Volatile::new(blank_receive);
 
-static mut twi_master_buffer: Buffer<TWI_BUFFER_LENGTH> = Buffer::new();
-static mut twi_tx_buffer: Buffer<TWI_BUFFER_LENGTH> = Buffer::new();
-static mut twi_rx_buffer: Buffer<TWI_BUFFER_LENGTH> = Buffer::new();
+static twi_master_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
+static twi_tx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
+static twi_rx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
 
-static mut twi_error: u8 = 0xFF;
+static twi_error: Volatile<u8> = Volatile::new(0xFF);
 
 /// Readies twi pins and sets twi bitrate
 pub fn twi_init() {
@@ -167,30 +168,30 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
     let start_micros = micros();
 
     unsafe {
-        while twi_state != State::READY  {
-            if TWI_TIMEOUT_US > 0 && (micros() - start_micros) > TWI_TIMEOUT_US as u64 {
-                handle_timeout(twi_do_reset_on_timeout);
+        while twi_state.read() != State::READY  {
+            if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+                twi_handle_timeout(twi_do_reset_on_timeout.read());
                 return None;
             }
         }
 
-        twi_state = State::MRX;
-        twi_send_stop = send_stop;
+        twi_state.write(State::MRX);
+        twi_send_stop.write(send_stop);
 
-        twi_error = 0xFF;
+        twi_error.write(0xFF);
 
-        twi_master_buffer.clear();
+        twi_master_buffer.as_mut(|buf| buf.clear());
 
-        twi_slarw = TW_READ | (address << 1);
+        twi_slarw.write(TW_READ | (address << 1));
 
-        if twi_in_rep_start {
-            twi_in_rep_start = false;
+        if twi_in_rep_start.read() {
+            twi_in_rep_start.write(false);
             let start_micros = micros();
 
             while TWCR::TWWC.read_bit() {
-                TWDR::write(twi_slarw);
-                if TWI_TIMEOUT_US > 0 && (micros() - start_micros) > TWI_TIMEOUT_US as u64 {
-                    handle_timeout(twi_do_reset_on_timeout);
+                TWDR::write(twi_slarw.read());
+                if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+                    twi_handle_timeout(twi_do_reset_on_timeout.read());
                     return None;
                 }
             }
@@ -209,67 +210,181 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Option<Buffer<TWI_
         }
         
         let start_micros = micros();
-        while twi_state == State::MRX {
-            if TWI_TIMEOUT_US > 0 && (micros() - start_micros) > TWI_TIMEOUT_US as u64 {
-                handle_timeout(twi_do_reset_on_timeout);
+        while twi_state.read() == State::MRX {
+            if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+                twi_handle_timeout(twi_do_reset_on_timeout.read());
                 return None;
             }
         }
         
-        let len = twi_master_buffer.len().min(length as usize);
+        let len = twi_master_buffer.read().len().min(length as usize);
 
         let mut ret: Buffer<TWI_BUFFER_LENGTH> = Buffer::new();
         for i in 0..len {
-            ret.write(twi_master_buffer[i]);
+            ret.write(twi_master_buffer.read()[i]);
         }
 
         Some(ret)
     }
 }
 
-pub fn twi_attach_slave_rx_event(function: fn(Buffer<TWI_BUFFER_LENGTH>)) {
-    unsafe { twi_on_slave_receive = function };
+pub enum WriteError {
+    /// Address send, NACK received
+    SlaNack = 2,
+    /// Data send, NACK received
+    DataNack,
+    /// Other TWI error
+    Other,
+    /// Timed out
+    Timeout,
 }
 
-pub fn twi_attach_slave_tx_event(function: fn()) {
-    unsafe { twi_on_slave_transmit = function };
+pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_stop: bool) -> Result<(), WriteError> {
+    let start_micros = micros();
+    while twi_state.read() != State::READY {
+        if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+            twi_handle_timeout(twi_do_reset_on_timeout.read());
+            return Err(WriteError::Timeout);
+        }
+    }
+
+    twi_state.write(State::MTX);
+    twi_send_stop.write(send_stop);
+    // Reset error state (0xFF.. no error occured)
+    twi_error.write(0xFF);
+
+    twi_master_buffer.as_mut(|buf| buf.clear());
+
+    for byte in data {
+        twi_master_buffer.as_mut(|buf| buf.write(byte));
+    }
+
+    // Build sla+w, slave device address + w bit
+    twi_slarw.write(TW_WRITE | (address << 1));
+
+    // If we're in a repeated start, then we've already sent the START in the ISR.
+    // Don't do it again.
+    use TWCR::*;
+    if twi_in_rep_start.read() {
+        twi_in_rep_start.write(false);
+        
+        let start_micros = micros();
+        unsafe {
+            while TWCR::TWWC.read_bit() {
+                TWDR::write(twi_slarw.read());
+                if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+                    twi_handle_timeout(twi_do_reset_on_timeout.read());
+                    return Err(WriteError::Timeout);
+                }
+            }
+            // Enable INTs, but not START
+            TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() )
+        }
+    } else {
+        // Send start condition
+        unsafe { TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() | TWSTA.bv() ); }
+    }
+
+    // Wait for write operation to complete
+    let start_micros = micros();
+    while wait && twi_state.read() == State::MTX {
+        if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+            twi_handle_timeout(twi_do_reset_on_timeout.read());
+            return Err(WriteError::Timeout);
+        }
+    }
+
+    match twi_error.read() {
+        0xFF => Ok(()),
+        TW_MT_SLA_NACK => Err(WriteError::SlaNack),
+        TW_MT_DATA_NACK => Err(WriteError::DataNack),
+        _ => Err(WriteError::Other)
+    }
+}
+
+pub enum TransmitStatus {
+    TooLarge,
+    NotSTX,
+    Ok,
+}
+
+/// Fills slave tx buffer with data.
+pub fn twi_transmit<const SIZE: usize>(data: Buffer<SIZE>) -> TransmitStatus {
+    // Ensure data will fit into buffer
+    let tx_len = twi_tx_buffer.read().len();
+    if TWI_BUFFER_LENGTH < (tx_len + data.len()) {
+        return TransmitStatus::TooLarge;
+    }
+
+    // Ensure we are currently as slave transmitter
+    if twi_state.read() != State::STX {
+        return TransmitStatus::NotSTX;
+    }
+
+    // Copy data into tx buffer
+    for byte in data {
+        twi_tx_buffer.as_mut(|buf| buf.write(byte));
+    }
+
+    TransmitStatus::Ok
+}
+
+pub fn twi_attach_slave_rx_event(callback: fn(Buffer<TWI_BUFFER_LENGTH>)) {
+    twi_on_slave_receive.write(callback);
+}
+
+pub fn twi_attach_slave_tx_event(callback: fn()) {
+    twi_on_slave_transmit.write(callback);
 }
 
 pub fn twi_reply(ack: bool) {
+    use TWCR::*;
     if ack {
-        unsafe { TWCR::write( TWCR::TWEN.bit() | TWCR::TWIE.bit() | TWCR::TWINT.bit() | TWCR::TWEA.bit() ) }
+        unsafe { TWCR::write( TWEN.bv() | TWIE.bv() | TWINT.bv() | TWEA.bv() ) }
     } else {
-        unsafe { TWCR::write( TWCR::TWEN.bit() | TWCR::TWIE.bit() | TWCR::TWINT.bit() ) }
+        unsafe { TWCR::write( TWEN.bv() | TWIE.bv() | TWINT.bv() ) }
     }
 }
 
 pub fn twi_stop() {
     // Send stop condition
-    unsafe { TWCR::write( TWCR::TWEN.bit() | TWCR::TWIE.bit() | TWCR::TWINT.bit() | TWCR::TWEA.bit()  | TWCR::TWSTO.bit() ) }
+    use TWCR::*;
+    unsafe { TWCR::write( TWEN.bv() | TWIE.bv() | TWINT.bv() | TWEA.bv()  | TWSTO.bv() ) }
 
     // Wait for stop condition to be executed on bus
     // TWINT is not set after a stop condition!
     // We can't use micros() from an ISR, since micros relies on interrutps, so approximate the timeout with cycle-counted delays
     const US_PER_LOOP: u32 = 8;
-    let mut counter = (TWI_TIMEOUT_US + US_PER_LOOP - 1) / US_PER_LOOP; // Round up
+    let mut counter = (twi_timeout_us.read() + US_PER_LOOP - 1) / US_PER_LOOP; // Round up
     while unsafe { TWCR::TWSTO.read_bit() } {
-        if TWI_TIMEOUT_US > 0 {
+        if twi_timeout_us.read() > 0 {
             if counter > 0 {
-                _delay_us(US_PER_LOOP as u64);
+                delay_micros(US_PER_LOOP as u64);
                 counter -= 1;
             } else {
-                handle_timeout(unsafe { twi_do_reset_on_timeout });
+                twi_handle_timeout(twi_do_reset_on_timeout.read());
                 return
             }
         }
     }
 
-    unsafe { twi_state = State::READY; }
+    twi_state.write(State::READY);
 }
 
-pub fn handle_timeout(reset: bool) {
+pub fn twi_release_bus() {
+    use TWCR::*;
+    unsafe { TWCR::write( TWEN.bv() | TWIE.bv() | TWEA.bv() | TWINT.bv() ) };
+}
+
+pub fn twi_set_timeout_us(timeout: u32, reset_with_timeout: bool) {
+    twi_timed_out_flag.write(false);
+    twi_timeout_us.write(timeout);
+    twi_do_reset_on_timeout.write(reset_with_timeout);
+}
+
+pub fn twi_handle_timeout(reset: bool) {
     unsafe {
-        twi_timed_out_flag = true;
+        twi_timed_out_flag.write(true);
         
         if reset {
             let previous_TWBR = TWBR::read();
@@ -284,14 +399,143 @@ pub fn handle_timeout(reset: bool) {
     }
 }
 
+pub fn twi_manage_timeout_flag(clear_flag: bool) -> bool {
+    let flag = twi_timed_out_flag.read() ;
+    if clear_flag {
+        twi_timed_out_flag.write(false);
+    }
+    flag
+}
+
 #[doc(hidden)]
 #[inline(always)]
 #[allow(non_snake_case)]
 #[export_name = "__vector_24"]
 pub unsafe extern "avr-interrupt" fn TWI() {
     match TWSR::read() & TW_STATUS_MASK {
+        TW_REP_START => {
+            TWDR::write(twi_slarw.read());
+            twi_reply(true);
+        },
+        TW_MT_DATA_ACK => {
+            // If there is data to send, send it, otherwise stop
+            if let Some(data) = twi_master_buffer.as_mut(|buf| buf.read()) {
+                TWDR::write(data);
+                twi_reply(true);
+            } else {
+                if twi_send_stop.read() {
+                    twi_stop();
+                } else {
+                    twi_in_rep_start.write(true); // We're going send the START
+                    // Don't enable the interrupt. We'll generate the start, but we
+                    // avoid handling the interrupt until we're in the next transaction,
+                    // at the point where we would normally issue the start.
+                    use TWCR::*;
+                    TWCR::write( TWINT.bv() | TWSTA.bv() | TWEN.bv() );
+                    twi_state.write(State::READY);
+                }
+            }
+        },
+        TW_MT_SLA_NACK => { // Address send, NACK received
+            twi_error.write(TW_MT_SLA_NACK);
+            twi_stop();
+        },
+        TW_MT_DATA_NACK => { // Data send, NACK received
+            twi_error.write(TW_MT_DATA_NACK);
+            twi_stop();
+        },
+        TW_MT_ARB_LOST => { // Lost bus arbitration
+            twi_error.write(TW_MT_ARB_LOST);
+            twi_release_bus();
+        },
+
+        // Master Receiver
+        TW_MR_DATA_ACK => { // Data received, ACK sent
+            // Put byte into buffer
+            twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
+        },
+        TW_MR_SLA_ACK => { // Address sent, ACK reeceived
+            // ACK if more bytes are expected, otherwise NACK
+            twi_reply(twi_master_buffer.read().len() > 0)
+        },
+        TW_MR_DATA_NACK => { // Data received, NACK sent
+            twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
+            if twi_send_stop.read() {
+                twi_stop();
+            } else {
+                twi_in_rep_start.write(true); // We're going send the START
+                // Don't enable the interrupt. We'll generate the start, but we
+                // avoid handling the interrupt until we're in the next transaction,
+                // at the point where we would normally issue the start.
+                use TWCR::*;
+                TWCR::write( TWINT.bv() | TWSTA.bv() | TWEN.bv() );
+                twi_state.write(State::READY);
+            }
+        },
+        TW_MR_SLA_NACK => { // Address sent, NACK received
+            twi_stop();
+        },
+        // TW_MR_ARB_LOST handled by TW_MT_ARB_LOST arm
+
+        // Slave Receiver
+        TW_SR_ARB_LOST_GCALL_ACK => { // Lost arbitration, returned ACK
+            // Enter slave receiver mode
+            twi_state.write(State::SRX);
+            //Indicate that rx buffer can be overwritten and ACK
+            twi_rx_buffer.as_mut(|buf| buf.clear());
+            twi_reply(true);
+        },
+        TW_SR_GCALL_DATA_ACK => { // Data received generallty, returned ACK
+            // If there is still room in the rx buffer
+            if !twi_rx_buffer.read().is_full() {
+                // Put byte in buffer and ACK
+                twi_rx_buffer.as_mut(|buf| buf.write(TWDR::read()));
+                twi_reply(true);
+            } else {
+                // otherwise NACK
+                twi_reply(false);
+            }
+        },
+        TW_SR_STOP => { // Stop or repeated start condition received
+            // ACK future responses and leave slave receiver state
+            twi_release_bus();
+            //Put a null char after data if there's room
+            twi_rx_buffer.as_mut(|buf| buf.write('\0' as u8));
+            // Callback to the user defined callback
+            twi_on_slave_receive.read()(twi_rx_buffer.read());
+            // Since we submit rx buffer to "wire" library, we can reset it
+            twi_rx_buffer.as_mut(|buf| buf.clear());
+        },
+        TW_SR_GCALL_DATA_NACK => { // Data received generally, returned NACK
+            twi_reply(false);
+        },
+
+        // Slave Transmitter
+        TW_ST_ARB_LOST_SLA_ACK => { // Arbitration lost, returned ACK
+            // Enter slave transmitter mode
+            twi_state.write(State::STX);
+            // Ready the tx buffer for iteration
+            twi_tx_buffer.as_mut(|buf| buf.clear());
+            // Request for tx buffer to be filled
+            // Note: User must call twi_transmit(bytes) to do this
+            twi_on_slave_transmit.read()();
+        },
+        TW_ST_DATA_ACK => { // Byte sent, ACK returned
+            // Copy data to output register
+            if let Some(byte) = twi_tx_buffer.as_mut(|buf| buf.read()) {
+                TWDR::write(byte);
+            }
+            //If there is more to send, ACK, otherwise NACK
+            twi_reply(!twi_tx_buffer.read().is_empty());
+        },
+        TW_ST_LAST_DATA => { // Received ACK, but we are done already!
+            // ACK future responses
+            twi_reply(true);
+            // Leave slave receiver state
+            twi_state.write(State::READY);
+        },
         TW_BUS_ERROR => {
-            twi_error = TW_BUS_ERROR;
+            twi_error.write(TW_BUS_ERROR);
             twi_stop();
         }
         _ => {}
