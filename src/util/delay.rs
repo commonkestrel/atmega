@@ -3,7 +3,9 @@
 use core::arch::asm;
 use crate::constants::CPU_FREQUENCY;
 
+/// Milliseconds in a second
 pub const MILLIS: u64 = 1_000;
+/// Microseconds in a second
 pub const MICROS: u64 = 1_000_000;
 
 /// Delay loop using a 16 bit counter, so upto 65536 iterations are possible.
