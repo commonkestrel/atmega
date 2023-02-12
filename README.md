@@ -5,8 +5,9 @@ Provides many of the features of the Arduino language already used, with the ben
 Not quite finished, but this works well enough to make simple programs.
 
 ### Why should you use this?
-If you are looking for a higher level, easy to use interface with the ATmega328p, this is the crate for you.
+If you are looking for a high(ish) level, easy to use interface with the ATmega328p, this is the crate for you.
 This crate aims to provide easy, high-level interfaces to low-level operations without abstracting too much of the control logic away.
+It's main goal is to emulate the official Arduino language as closely as possible.
 
 However, if you want a lower-level interface to dozens of microcontrollers including the ATmega328p, [`ruduino`](https://github.com/avr-rust/ruduino) or [`embedded-hal`](https://github.com/rust-embedded/embedded-hal) are probably better options.
 
