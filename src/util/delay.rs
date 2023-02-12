@@ -3,8 +3,8 @@
 use core::arch::asm;
 use crate::constants::CPU_FREQUENCY;
 
-const MILLIS: u64 = 1_000;
-const MICROS: u64 = 1_000_000;
+pub const MILLIS: u64 = 1_000;
+pub const MICROS: u64 = 1_000_000;
 
 /// Delay loop using a 16 bit counter, so upto 65536 iterations are possible.
 /// (The value 65536 would have to passed as 0)
@@ -46,11 +46,11 @@ pub fn _delay_cycles(count: u64) {
 /// On boards with a clock speed of less than 4MHz the precision will be less than 1us
 #[inline(always)]
 pub fn _delay_us(count: u64) {
-    _delay_cycles(count / (CPU_FREQUENCY/MICROS));
+    _delay_cycles(count * (CPU_FREQUENCY/MICROS));
 }
 
 /// Delay the specified number of milliseconds
 #[inline(always)]
 pub fn _delay_ms(count: u64) {
-    _delay_cycles(count / (CPU_FREQUENCY/MILLIS));
+    _delay_cycles(count * (CPU_FREQUENCY/MILLIS));
 }
