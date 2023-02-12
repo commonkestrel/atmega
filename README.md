@@ -69,7 +69,7 @@ We need to return something from this function to pass into out loop, usually yo
 
 Now we need a loop. Since the `loop` keyword is already taken, `run()` is used instead.
 ```rust
-fn run(_state: State) {
+fn run(_state: &mut State) {
 
 }
 ```
