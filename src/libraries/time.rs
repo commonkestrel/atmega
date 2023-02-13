@@ -2,16 +2,25 @@
 
 use crate::constants::TIME;
 
+/// An approximation of the current time. Use an RTC for a more accurate measurement.
+pub fn now() -> DateTime {
+    DateTime::from_unix(unix())
+}
+
+/// Approximation of the current unix time. Use an RTC for a more accurate measurement.
 pub fn unix() -> u64 {
     todo!()
 }
 
-pub struct Time {
+/// Combined date and time in the GMT time zone.
+pub struct DateTime {
     /// Starts at year 0.
     pub year: usize,
+    /// The month.
     pub month: Month,
     /// Will be between 0-30.
     pub day: u8,
+    /// The day of the week. Starts at Sunday.
     pub weekday: Weekday,
     /// Will be between 0-23.
     pub hour: u8,
@@ -21,9 +30,9 @@ pub struct Time {
     pub second: u8,
 }
 
-impl Time {
+impl DateTime {
     /// Creates `Time` from a unix timestamp (in seconds).
-    fn from_unix(time: u64) -> Time {
+    pub fn from_unix(time: u64) -> DateTime {
         let second = time % 60;
 
         let minutes = time / 60; // Convert time to minutes.
@@ -60,7 +69,7 @@ impl Time {
             }
         };
 
-        Time {
+        DateTime {
             year: year as usize,
             month: Month::from_index(month),
             day: day as u8,
@@ -72,12 +81,12 @@ impl Time {
     }
 
     /// Returns the time in seconds from the unix epoch.
-    fn to_unix(&self) -> u64 {
+    pub fn to_unix(&self) -> u64 {
         todo!()
     }
 }
 
-impl core::fmt::Display for Time {
+impl core::fmt::Display for DateTime {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}/{}/{} {}:{}:{}", self.day, self.month as u8 + 1, self.year, self.hour, self.minute, self.second)
     }
@@ -102,8 +111,11 @@ pub enum Month {
 }
 
 impl Month {
+    /// Matches month number to month.
+    /// Index is between 0-11.
     pub fn from_index(month: usize) -> Month {
         use Month::*;
+        // Keep between 0-11 to avoid panics.
         match month % 12 {
             0  => January,
             1  => February,
