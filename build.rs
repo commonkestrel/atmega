@@ -25,4 +25,5 @@ fn main() {
     let unix = now.duration_since(time::UNIX_EPOCH).expect("System time set before Unix Epoch");
     write!(&mut f, "/// The unix timestamp at compile time.\npub const TIME: u64 = {};", unix.as_secs()).expect("Failed to write to OUT_DIR/constants.rs");
     println!("cargo:rerun-if-env-changed=AVR_CPU_FREQUENCY_HZ");
+    println!("cargo:rerun-if-changed=/target");
 }
