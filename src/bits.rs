@@ -54,3 +54,13 @@ pub unsafe fn operate<F: Fn(u8) -> u8>(address: *mut u8, operator: F) {
     let current = read_volatile(address);
     write_volatile(address, operator(current));
 }
+
+/// Converts Binary Coded Decimal (BCD) to decimal.
+#[inline(always)]
+pub fn from_bcd(num: u8) -> u8 {
+    (num/16 * 10) + (num % 16)
+}
+
+pub fn from_dec(num: u8) -> u8 {
+    (num/10 * 16) + (num % 10)
+}
