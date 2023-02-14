@@ -1,7 +1,7 @@
 //! Low level time and date functions.
 
 use crate::constants::TIME;
-use crate::time::millis;
+use crate::timing::millis;
 
 /// An approximation of the current time. Use an RTC for a more accurate measurement.
 pub fn now() -> DateTime {

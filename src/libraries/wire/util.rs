@@ -9,7 +9,7 @@ use crate::constants::CPU_FREQUENCY;
 use crate::prelude::delay_micros;
 use crate::volatile::Volatile;
 use crate::buffer::Buffer;
-use crate::time::micros;
+use crate::timing::micros;
 
 #[derive(Clone, Copy, PartialEq)]
 enum State {
