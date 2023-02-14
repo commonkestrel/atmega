@@ -8,12 +8,13 @@
 pub mod bits;
 pub mod buffer;
 pub mod constants;
+pub mod drivers;
 pub mod interrupts;
 pub mod libraries;
 pub mod prelude;
 pub mod registers;
 pub mod serial;
-pub mod time;
+pub mod timing;
 pub mod volatile;
 pub mod wiring;
 

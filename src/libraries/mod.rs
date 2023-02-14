@@ -1,4 +1,4 @@
-//! Drivers for various componenets, devices, and accessories.
+//! Libraries to match the official Arduino language such as Wire and TimeLib
 
 pub mod time;
 
