@@ -27,66 +27,66 @@ const TW_READ: u8 = 1;
 /// SLA+W address
 const TW_WRITE: u8 = 0;
 
-const TW_STATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
+const TW_PTATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
 /// Start contidion transmitted
 
-// TW_MT_xxx : master transmitter
-// TW_MR_xxx : master receiver
-// TW_ST_xxx : slave transmitter
-// TW_SR_xxx : slave receiver
+// TW_CT_xxx : Controller transmitter
+// TW_CR_xxx : Controller receiver
+// TW_PT_xxx : Peripheral transmitter
+// TW_PR_xxx : Peripheral receiver
 
 pub enum Flags {
     /// Start condition transmitted
-    TW_START = 0x08,
+    TW_PTART = 0x08,
     /// Repeated start condition transmitted
     TW_REP_START = 0x10,
     /// SLA+W transmitted, ACK received
-    TW_MT_SLA_ACK = 0x18,
+    TW_CT_SLA_ACK = 0x18,
     /// SLA+W transmitted, NACK received
-    TW_MT_SLA_NACK = 0x20,
+    TW_CT_SLA_NACK = 0x20,
     /// Data transmitted, ACK received
-    TW_MT_DATA_ACK = 0x28,
+    TW_CT_DATA_ACK = 0x28,
     /// Data transmitted, NACK, received
-    TW_MT_DATA_NACK = 0x30,
+    TW_CT_DATA_NACK = 0x30,
     /// Arbitration lost in SLA+W/R, data, or NACK
-    /// TW_MT_ARB_LOST and TW_MR_ARB_LOST share this flag.
-    TW_MT_MR_ARB_LOST = 0x38,
+    /// TW_CT_ARB_LOST and TW_CR_ARB_LOST share this flag.
+    TW_CT_MR_ARB_LOST = 0x38,
     /// SLA+R transmitted, ACK received
-    TW_MR_SLA_ACK = 0x40,
+    TW_CR_SLA_ACK = 0x40,
     /// RLA+R transmitted, NACK received
-    TW_MR_SLA_NACK = 0x48,
+    TW_CR_SLA_NACK = 0x48,
     /// Data recived, ACK returned
-    TW_MR_DATA_ACK = 0x50,
+    TW_CR_DATA_ACK = 0x50,
     /// Data recived, NACK returned
-    TW_MR_DATA_NACK = 0x58,
+    TW_CR_DATA_NACK = 0x58,
     /// SLA+R received, ACK returned
-    TW_ST_SLA_ACK = 0xA8,
+    TW_PT_SLA_ACK = 0xA8,
     /// Artibation lost in SLA+RW, SLA+R recived, ACK returned
-    TW_ST_ARB_LOST_SLA_ACK = 0xB0,
+    TW_PT_ARB_LOST_SLA_ACK = 0xB0,
     /// Data transmitted, ACK received
-    TW_ST_DATA_ACK = 0xB8,
+    TW_PT_DATA_ACK = 0xB8,
     /// Data transmitted, NACK received
-    TW_ST_DATA_NACK = 0xC0,
+    TW_PT_DATA_NACK = 0xC0,
     /// Last data byte transmitted, ACK received
-    TW_ST_LAST_DATA = 0xC8,
+    TW_PT_LAST_DATA = 0xC8,
     /// SLA+W recieved, ACK returned
-    TW_SR_SLA_ACK = 0x60,
+    TW_PR_SLA_ACK = 0x60,
     /// Arbitration lost in SLA+RW, SLA+W received, ACK returned
-    TW_SR_ARB_LOST_SLA_ACK = 0x68,
+    TW_PR_ARB_LOST_SLA_ACK = 0x68,
     /// General call received, ACK returned
-    TW_SR_GCALL_ACK = 0x70,
+    TW_PR_GCALL_ACK = 0x70,
     /// Arbitration lost in SLA+RW, general call received, ACK returned
-    TW_SR_ARB_LOST_GCALL_ACK = 0x78,
+    TW_PR_ARB_LOST_GCALL_ACK = 0x78,
     /// Data received, ACK returned
-    TW_SR_DATA_ACK = 0x80,
+    TW_PR_DATA_ACK = 0x80,
     /// Data received, NACK returned
-    TW_SR_DATA_NACK = 0x88,
+    TW_PR_DATA_NACK = 0x88,
     /// General call data received, ACK returned
-    TW_SR_GCALL_DATA_ACK = 0x90,
+    TW_PR_GCALL_DATA_ACK = 0x90,
     /// General call data received, NACK returned
-    TW_SR_GCALL_DATA_NACK = 0x98,
+    TW_PR_GCALL_DATA_NACK = 0x98,
     /// Stop or repeated start condition received while selected
-    TW_SR_STOP = 0xA0,
+    TW_PR_STOP = 0xA0,
     /// No state information available
     TW_NO_INFO = 0xF8,
     /// Illegal start or stop condition
@@ -96,35 +96,36 @@ pub enum Flags {
 impl Flags {
     fn from_flag(flag: u8) -> Flags {
         use Flags::*;
-        match flag & TW_STATUS_MASK {
+        crate::println!("{:X}, {}", flag & TW_PTATUS_MASK, (flag & TW_PTATUS_MASK) == 0x08);
+        match flag & TW_PTATUS_MASK {
             0x00 => TW_BUS_ERROR,
-            0x08 => TW_START,
+            0x08 => TW_PTART,
             0x10 => TW_REP_START,
-            0x18 => TW_MT_SLA_ACK,
-            0x20 => TW_MT_SLA_NACK,
-            0x28 => TW_MT_DATA_ACK,
-            0x30 => TW_MT_DATA_NACK,
-            0x38 => TW_MT_MR_ARB_LOST,
-            0x40 => TW_MR_SLA_ACK,
-            0x48 => TW_MR_SLA_NACK,
-            0x50 => TW_MR_DATA_ACK,
-            0x58 => TW_MR_DATA_NACK,
-            0x60 => TW_SR_SLA_ACK,
-            0x68 => TW_SR_ARB_LOST_SLA_ACK,
-            0x70 => TW_SR_GCALL_ACK,
-            0x78 => TW_SR_ARB_LOST_GCALL_ACK,
-            0x80 => TW_SR_DATA_ACK,
-            0x88 => TW_SR_DATA_NACK,
-            0x90 => TW_SR_GCALL_DATA_ACK,
-            0x98 => TW_SR_GCALL_DATA_NACK,
-            0xA0 => TW_SR_STOP,
-            0xA8 => TW_ST_SLA_ACK,
-            0xB0 => TW_ST_ARB_LOST_SLA_ACK,
-            0xB8 => TW_ST_DATA_ACK,
-            0xC0 => TW_ST_DATA_NACK,
-            0xC8 => TW_ST_LAST_DATA,
+            0x18 => TW_CT_SLA_ACK,
+            0x20 => TW_CT_SLA_NACK,
+            0x28 => TW_CT_DATA_ACK,
+            0x30 => TW_CT_DATA_NACK,
+            0x38 => TW_CT_MR_ARB_LOST,
+            0x40 => TW_CR_SLA_ACK,
+            0x48 => TW_CR_SLA_NACK,
+            0x50 => TW_CR_DATA_ACK,
+            0x58 => TW_CR_DATA_NACK,
+            0x60 => TW_PR_SLA_ACK,
+            0x68 => TW_PR_ARB_LOST_SLA_ACK,
+            0x70 => TW_PR_GCALL_ACK,
+            0x78 => TW_PR_ARB_LOST_GCALL_ACK,
+            0x80 => TW_PR_DATA_ACK,
+            0x88 => TW_PR_DATA_NACK,
+            0x90 => TW_PR_GCALL_DATA_ACK,
+            0x98 => TW_PR_GCALL_DATA_NACK,
+            0xA0 => TW_PR_STOP,
+            0xA8 => TW_PT_SLA_ACK,
+            0xB0 => TW_PT_ARB_LOST_SLA_ACK,
+            0xB8 => TW_PT_DATA_ACK,
+            0xC0 => TW_PT_DATA_NACK,
+            0xC8 => TW_PT_LAST_DATA,
             0xF8 => TW_NO_INFO,
-            _ => unreachable!(),
+            _ => {unreachable!()},
         }
     }
 }
@@ -147,10 +148,10 @@ static twi_timed_out_flag: Volatile<bool> = Volatile::new(false);       // a tim
 static twi_do_reset_on_timeout: Volatile<bool> = Volatile::new(false); // reset the TWI registers on timeout
 
 fn blank_transmit() {}
-static twi_on_slave_transmit: Volatile<fn()> = Volatile::new(blank_transmit);
+static twi_on_peripheral_transmit: Volatile<fn()> = Volatile::new(blank_transmit);
 
 fn blank_receive(_buf: Buffer<TWI_BUFFER_LENGTH>) {}
-static twi_on_slave_receive: Volatile<fn(Buffer<TWI_BUFFER_LENGTH>)> = Volatile::new(blank_receive);
+static twi_on_peripheral_receive: Volatile<fn(Buffer<TWI_BUFFER_LENGTH>)> = Volatile::new(blank_receive);
 
 static twi_master_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
 static twi_tx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
@@ -298,7 +299,7 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
         twi_master_buffer.as_mut(|buf| buf.write(byte));
     }
 
-    // Build sla+w, slave device address + w bit
+    // Build sla+w, peripheral device address + w bit
     twi_slarw.write(TW_WRITE | (address << 1));
 
     // If we're in a repeated start, then we've already sent the START in the ISR.
@@ -347,7 +348,7 @@ pub enum TransmitStatus {
     Ok,
 }
 
-/// Fills slave tx buffer with data.
+/// Fills peripheral tx buffer with data.
 pub fn twi_transmit<const SIZE: usize>(data: Buffer<SIZE>) -> TransmitStatus {
     // Ensure data will fit into buffer
     let tx_len = twi_tx_buffer.read().len();
@@ -355,7 +356,7 @@ pub fn twi_transmit<const SIZE: usize>(data: Buffer<SIZE>) -> TransmitStatus {
         return TransmitStatus::TooLarge;
     }
 
-    // Ensure we are currently as slave transmitter
+    // Ensure we are currently as peripheral transmitter
     if twi_state.read() != State::STX {
         return TransmitStatus::NotSTX;
     }
@@ -368,12 +369,12 @@ pub fn twi_transmit<const SIZE: usize>(data: Buffer<SIZE>) -> TransmitStatus {
     TransmitStatus::Ok
 }
 
-pub fn twi_attach_slave_rx_event(callback: fn(Buffer<TWI_BUFFER_LENGTH>)) {
-    twi_on_slave_receive.write(callback);
+pub fn twi_attach_peripheral_rx_event(callback: fn(Buffer<TWI_BUFFER_LENGTH>)) {
+    twi_on_peripheral_receive.write(callback);
 }
 
-pub fn twi_attach_slave_tx_event(callback: fn()) {
-    twi_on_slave_transmit.write(callback);
+pub fn twi_attach_peripheral_tx_event(callback: fn()) {
+    twi_on_peripheral_transmit.write(callback);
 }
 
 pub fn twi_reply(ack: bool) {
@@ -457,7 +458,7 @@ pub unsafe extern "avr-interrupt" fn TWI() {
             TWDR::write(twi_slarw.read());
             twi_reply(true);
         },
-        TW_MT_DATA_ACK => {
+        TW_CT_DATA_ACK => {
             // If there is data to send, send it, otherwise stop
             if let Some(data) = twi_master_buffer.as_mut(|buf| buf.read()) {
                 TWDR::write(data);
@@ -476,29 +477,29 @@ pub unsafe extern "avr-interrupt" fn TWI() {
                 }
             }
         },
-        TW_MT_SLA_NACK => { // Address send, NACK received
-            twi_error.write(TW_MT_SLA_NACK as u8);
+        TW_CT_SLA_NACK => { // Address send, NACK received
+            twi_error.write(TW_CT_SLA_NACK as u8);
             twi_stop();
         },
-        TW_MT_DATA_NACK => { // Data send, NACK received
-            twi_error.write(TW_MT_DATA_NACK as u8);
+        TW_CT_DATA_NACK => { // Data send, NACK received
+            twi_error.write(TW_CT_DATA_NACK as u8);
             twi_stop();
         },
-        TW_MT_MR_ARB_LOST => { // Lost bus arbitration
-            twi_error.write(TW_MT_MR_ARB_LOST as u8);
+        TW_CT_MR_ARB_LOST => { // Lost bus arbitration
+            twi_error.write(TW_CT_MR_ARB_LOST as u8);
             twi_release_bus();
         },
 
         // Master Receiver
-        TW_MR_DATA_ACK => { // Data received, ACK sent
+        TW_CR_DATA_ACK => { // Data received, ACK sent
             // Put byte into buffer
             twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
         },
-        TW_MR_SLA_ACK => { // Address sent, ACK reeceived
+        TW_CR_SLA_ACK => { // Address sent, ACK reeceived
             // ACK if more bytes are expected, otherwise NACK
             twi_reply(twi_master_buffer.read().len() > 0)
         },
-        TW_MR_DATA_NACK => { // Data received, NACK sent
+        TW_CR_DATA_NACK => { // Data received, NACK sent
             twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
             if twi_send_stop.read() {
                 twi_stop();
@@ -512,20 +513,20 @@ pub unsafe extern "avr-interrupt" fn TWI() {
                 twi_state.write(State::READY);
             }
         },
-        TW_MR_SLA_NACK => { // Address sent, NACK received
+        TW_CR_SLA_NACK => { // Address sent, NACK received
             twi_stop();
         },
-        // TW_MR_ARB_LOST handled by TW_MT_ARB_LOST arm
+        // TW_CR_ARB_LOST handled by TW_CT_ARB_LOST arm
 
         // Slave Receiver
-        TW_SR_ARB_LOST_GCALL_ACK => { // Lost arbitration, returned ACK
-            // Enter slave receiver mode
+        TW_PR_ARB_LOST_GCALL_ACK => { // Lost arbitration, returned ACK
+            // Enter peripheral receiver mode
             twi_state.write(State::SRX);
             //Indicate that rx buffer can be overwritten and ACK
             twi_rx_buffer.as_mut(|buf| buf.clear());
             twi_reply(true);
         },
-        TW_SR_GCALL_DATA_ACK => { // Data received generallty, returned ACK
+        TW_PR_GCALL_DATA_ACK => { // Data received generallty, returned ACK
             // If there is still room in the rx buffer
             if !twi_rx_buffer.read().is_full() {
                 // Put byte in buffer and ACK
@@ -536,31 +537,31 @@ pub unsafe extern "avr-interrupt" fn TWI() {
                 twi_reply(false);
             }
         },
-        TW_SR_STOP => { // Stop or repeated start condition received
-            // ACK future responses and leave slave receiver state
+        TW_PR_STOP => { // Stop or repeated start condition received
+            // ACK future responses and leave peripheral receiver state
             twi_release_bus();
             //Put a null char after data if there's room
             twi_rx_buffer.as_mut(|buf| buf.write('\0' as u8));
             // Callback to the user defined callback
-            twi_on_slave_receive.read()(twi_rx_buffer.read());
+            twi_on_peripheral_receive.read()(twi_rx_buffer.read());
             // Since we submit rx buffer to "wire" library, we can reset it
             twi_rx_buffer.as_mut(|buf| buf.clear());
         },
-        TW_SR_GCALL_DATA_NACK => { // Data received generally, returned NACK
+        TW_PR_GCALL_DATA_NACK => { // Data received generally, returned NACK
             twi_reply(false);
         },
 
         // Slave Transmitter
-        TW_ST_ARB_LOST_SLA_ACK => { // Arbitration lost, returned ACK
-            // Enter slave transmitter mode
+        TW_PT_ARB_LOST_SLA_ACK => { // Arbitration lost, returned ACK
+            // Enter peripheral transmitter mode
             twi_state.write(State::STX);
             // Ready the tx buffer for iteration
             twi_tx_buffer.as_mut(|buf| buf.clear());
             // Request for tx buffer to be filled
             // Note: User must call twi_transmit(bytes) to do this
-            twi_on_slave_transmit.read()();
+            twi_on_peripheral_transmit.read()();
         },
-        TW_ST_DATA_ACK => { // Byte sent, ACK returned
+        TW_PT_DATA_ACK => { // Byte sent, ACK returned
             // Copy data to output register
             if let Some(byte) = twi_tx_buffer.as_mut(|buf| buf.read()) {
                 TWDR::write(byte);
@@ -568,10 +569,10 @@ pub unsafe extern "avr-interrupt" fn TWI() {
             //If there is more to send, ACK, otherwise NACK
             twi_reply(!twi_tx_buffer.read().is_empty());
         },
-        TW_ST_LAST_DATA => { // Received ACK, but we are done already!
+        TW_PT_LAST_DATA => { // Received ACK, but we are done already!
             // ACK future responses
             twi_reply(true);
-            // Leave slave receiver state
+            // Leave peripheral receiver state
             twi_state.write(State::READY);
         },
         TW_BUS_ERROR => {

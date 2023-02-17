@@ -22,11 +22,11 @@ pub fn begin() {
 
     util::twi_init();
 
-    util::twi_attach_slave_tx_event(on_request_service);
-    util::twi_attach_slave_rx_event(on_receive_service);
+    util::twi_attach_peripheral_tx_event(on_request_service);
+    util::twi_attach_peripheral_rx_event(on_receive_service);
 }
 
-/// `begin` and set the TWI slave address
+/// `begin` and set the TWI peripheral address
 pub fn begin_addr(address: u8) {
     begin();
     util::set_address(address);
@@ -49,15 +49,15 @@ pub fn set_clock(freq: u64) {
 /// `reset_with_timeout`: dictates whether the TWI interface should be automatically reset on timeout
 /// 
 /// This limits the maximum time to wait for the TWI hardware. If more time passes, the bus is assumed
-/// to have locked up (e.g. due to noise-induced glitches or faulty slaves) and the transaction is aborted.
+/// to have locked up (e.g. due to noise-induced glitches or faulty peripherals) and the transaction is aborted.
 /// Optionally, thw TWI hardware is also reset, which can be required to allow subsequent transactions to 
 /// succeed in some cases (in particular when noise has made the TWI hardware thinmk there is a second
-/// master that has claimed the bus).
+/// controller that has claimed the bus).
 /// 
 /// When a timeout is triggered, a flag is set that can be queried with `get_wire_timeout_flag()` and is cleared
 /// when `clear_wire_timeout_flag()` or `set_wire_timeout_us()` is called.
 /// 
-/// Note that this timeout can also trigger while waiting for clock stretching or waiting for a second master 
+/// Note that this timeout can also trigger while waiting for clock stretching or waiting for a second controller 
 /// to complete its tranaction. So make sure to adapt the timeout to accommodate for those cases if needed.
 /// A typical timeout would be 25ms (which is the maximum clock stretching allowed by the SMBus protocol),
 /// but (much) shorter values will usually also work.
@@ -110,11 +110,11 @@ pub fn request_from(address: u8, quantity: u8, send_stop: bool) -> Result<(), ()
     Ok(())
 }
 
-/// Begin transmitting to the given slave address.
+/// Begin transmitting to the given peripheral address.
 pub fn begin_transmission(address: u8) {
     // Indicate that we are transmitting
     transmitting.write(true);
-    // Set address of targeted slave
+    // Set address of targeted peripheral
     tx_address.write(address);
     // Reset tx_buffer
     tx_buffer.as_mut(|buf| buf.clear());
@@ -142,10 +142,10 @@ pub fn end_transmission(send_stop: bool) -> Result<(), util::WriteError> {
     ret
 }
 
-/// Must be called in `slave tx event callback` or after `begin_transmission(address)`
+/// Must be called in `peripheral tx event callback` or after `begin_transmission(address)`
 pub fn write(data: u8) -> Result<(), ()> {
     if transmitting.read() {
-    // In master transmitter mode
+    // In controller transmitter mode
         // Don't bother if buffer is full
         if tx_buffer.read().is_full() {
             return Err(());
@@ -153,31 +153,31 @@ pub fn write(data: u8) -> Result<(), ()> {
         // put byte in tx buffer
         tx_buffer.as_mut(|buf| buf.write(data));
     } else {
-    // In slave send mode
-        // Reply to master
+    // In peripheral send mode
+        // Reply to controller
         util::twi_transmit(Buffer::<1>::from_slice(&[data]));
     }
 
     Ok(())
 }
 
-/// Must be called in `slave tx event callback` or after `begin_transmission(address)`
+/// Must be called in `peripheral tx event callback` or after `begin_transmission(address)`
 pub fn write_all<const SIZE: usize>(data: Buffer<SIZE>) {
     if transmitting.read() {
-    // In master transmitter mode
+    // In controller transmitter mode
         for byte in data {
             write(byte);
         }
     } else {
-    // In slave send mode
-        // Reply to master
+    // In peripheral send mode
+        // Reply to controller
         util::twi_transmit(data);
     }
 }
 
 /// The number of bytes available in the rx buffer.
 /// 
-/// Must be called in `slave rx event callback` or after `request_from(address, num_bytes)`
+/// Must be called in `peripheral rx event callback` or after `request_from(address, num_bytes)`
 pub fn available() -> usize {
     rx_buffer.read().len()
 }
@@ -187,7 +187,7 @@ pub fn read() -> Option<u8> {
     rx_buffer.read().read()
 }
 
-/// Must be called in `slave_rx_event_callback()`
+/// Must be called in `peripheral_rx_event_callback()`
 /// or after `request_from(address, num_bytes)`
 pub fn peek() -> Option<u8> {
     if rx_buffer.read().is_empty() {
@@ -205,9 +205,9 @@ pub fn flush() {
 }
 
 fn on_receive_service(bytes_in: Buffer<TWI_BUFFER_LENGTH>) {
-    // don't bother if rx buffer is in use by a master request_from() op
+    // don't bother if rx buffer is in use by a controller request_from() op
     // I know this drops data, but it allows for slight supidity
-    // meaning, they may not have read all the master request_from() data yet
+    // meaning, they may not have read all the controller request_from() data yet
     if !rx_buffer.read().is_empty() {
         return;
     }
@@ -226,7 +226,7 @@ fn on_request_service() {
     // don't bother if user hasn't registered a callback
     if let Some(callback) = user_on_request.read() {
         // Reset tx buffer
-        // !!! This will kill any pending pre-master send_to() activity
+        // !!! This will kill any pending pre-controller send_to() activity
         tx_buffer.as_mut(|buf| buf.clear());
 
         callback();
