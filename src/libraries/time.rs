@@ -1,19 +1,26 @@
 //! Low level time and date functions.
 
+#[cfg(feature = "millis")]
 use crate::constants::TIME;
+#[cfg(feature = "millis")]
 use crate::timing::millis;
 
 /// An approximation of the current time. Use an RTC for a more accurate measurement.
+#[cfg(any(feature = "millis", doc))]
+#[doc(cfg(feature = "millis"))]
 pub fn now() -> DateTime {
     DateTime::from_unix(unix())
 }
 
 /// Approximation of the current unix time. Use an RTC for a more accurate measurement.
+#[cfg(any(feature = "millis", doc))]
+#[doc(cfg(feature = "millis"))]
 pub fn unix() -> u64 {
     TIME + millis()/1000
 }
 
 /// Combined date and time in the GMT time zone.
+#[derive(Debug)]
 pub struct DateTime {
     /// Starts at year 0.
     pub year: usize,
@@ -94,7 +101,7 @@ impl core::fmt::Display for DateTime {
 
 /// Month of the year.
 #[allow(missing_docs)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Month {
     January,
     February,
