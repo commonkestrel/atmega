@@ -12,6 +12,7 @@ const DS1307_ADDRESS: u8 = 0x68;
 const FIELDS: usize = 7;
 
 /// Various I2C errors that can occur while interfacing with the DS1307.
+#[derive(Debug)]
 pub enum Error {
     /// This error occurs when the DS1307 does not exist or is not connected to the I2C bus.
     NotExist,
