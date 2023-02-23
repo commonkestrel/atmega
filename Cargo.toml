@@ -61,3 +61,8 @@ path = "examples/blink.rs"
 name = "interrupt"
 path = "examples/interrupt.rs"
 required-features = ["interrupt-macro"]
+
+[[example]]
+name = "ds1307"
+path = "examples/ds1307.rs"
+required-features = ["twowire"]
