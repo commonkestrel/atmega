@@ -25,7 +25,7 @@ use crate::volatile::Volatile;
 static USART_BUFFER: Volatile<Buffer<32>> = Volatile::new(Buffer::new());
 
 /// Easy interface with the USART with `core::fmt::Write` implemented.
-pub struct Serial {}
+pub struct Serial;
 
 impl Serial {
     /// Initialize serial at the given baud rate
