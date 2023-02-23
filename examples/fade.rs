@@ -3,7 +3,7 @@
 
 use atmega::prelude::*;
 
-run!(setup, run);
+run!(setup, run, State);
 
 struct State {
     analog: u8,

@@ -38,10 +38,19 @@ macro_rules! run {
         pub extern "C" fn main() -> ! {
             $crate::_init();
             
-            let mut state = $setup();
+            $setup();
+            loop{ $loop() }
+        }
+    };
+    ($setup: ident, $loop: ident, $state: tt) => {
+        #[no_mangle]
+        pub extern "C" fn main() -> ! {
+            $crate::_init();
+            
+            let mut state: $state = $setup();
             loop{ $loop(&mut state) }
         }
-    }
+    };
 }
 
 /// Panic handler.

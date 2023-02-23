@@ -5,14 +5,11 @@ use atmega::prelude::*;
 
 run!(setup, run);
 
-struct State {}
-
-fn setup() -> State {
+fn setup() {
     pin_mode(Pin::D9, PinMode::OUTPUT);
-    State {}
 }
 
-fn run(_state: &mut State) {
+fn run() {
     digital_toggle(Pin::D9);
     delay(1000);
 }
