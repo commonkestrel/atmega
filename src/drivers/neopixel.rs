@@ -7,44 +7,137 @@
 use crate::libraries::color::Color;
 use crate::wiring::{ Pin, PinMode, pin_mode, digital_write };
 
-// RGB NeoPixel permutations; white and red offsets are always same
-// Offset:        W          R          G          B
-const NEO_RGB: u8 =  ((0 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B
-const NEO_RBG: u8 =  ((0 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G
-const NEO_GRB: u8 =  ((1 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B
-const NEO_GBR: u8 =  ((2 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R
-const NEO_BRG: u8 =  ((1 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G
-const NEO_BGR: u8 =  ((2 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R
+/// The order of primary colors in the NeoPixel data stream can vary among
+/// device types, manufacturers and even different revisions of the same
+/// item.  The third parameter to the Adafruit_NeoPixel constructor encodes
+/// the per-pixel byte offsets of the red, green and blue primaries (plus
+/// white, if present) in the data stream -- the following #defines provide
+/// an easier-to-use named version for each permutation. e.g. NEO_GRB
+/// indicates a NeoPixel-compatible device expecting three bytes per pixel,
+/// with the first byte transmitted containing the green value, second
+/// containing red and third containing blue. The in-memory representation
+/// of a chain of NeoPixels is the same as the data-stream order; no
+/// re-ordering of bytes is required when issuing data to the chain.
+/// Most of these values won't exist in real-world devices, but it's done
+/// this way so we're ready for it (also, if using the WS2811 driver IC,
+/// one might have their pixels set up in any weird permutation).
+pub enum Order {
+    /// Transmit as R,G,B
+    RGB  
+    /// Transmit as R,B,G
+    RBG  
+    /// Transmit as G,R,B
+    GRB  
+    /// Transmit as G,B,R
+    GBR  
+    /// Transmit as B,R,G
+    BRG  
+    /// Transmit as B,G,R
+    BGR  
+    /// Transmit as W,R,G,B
+    WRGB  
+    /// Transmit as W,R,G,B
+    WRBG  
+    /// Transmit as W,G,R,B
+    WGRB  
+    /// Transmit as W,G,B,R
+    WGBR  
+    /// Transmit as W,B,R,G
+    WBRG  
+    /// Transmit as W,B,G,R
+    WBGR  
+    /// Transmit as R,W,G,B
+    RWGB  
+    /// Transmit as R,W,B,G
+    RWBG  
+    /// Transmit as R,G,W,B
+    RGWB  
+    /// Transmit as R,G,B,W
+    RGBW  
+    /// Transmit as R,B,W,G
+    RBWG  
+    /// Transmit as R,B,G,W
+    RBGW  
+    /// Transmit as G,W,R,B 
+    GWRB  
+    /// Transmit as G,W,B,R
+    GWBR  
+    /// Transmit as G,R,W,B
+    GRWB  
+    /// Transmit as G,R,B,W
+    GRBW  
+    /// Transmit as G,R,W,R
+    GBWR  
+    /// Transmit as G,B,R,W
+    GBRW  
+    /// Transmit as B,W,R,G
+    BWRG  
+    /// Transmit as B,W,G,R
+    BWGR  
+    /// Transmit as B,R,W,G
+    BRWG  
+    /// Transmit as B,R,G,W
+    BRGW  
+    /// Transmit as B,G,W,R
+    BGWR  
+    /// Transmit as B,G,R,W
+    BGRW  
+}
 
-// RGBW NeoPixel permutations; all 4 offsets are distinct
-// Offset:         W          R          G          B
-const NEO_WRGB: u8 = ((0 << 6) | (1 << 4) | (2 << 2) | (3)); ///< Transmit as W,R,G,B
-const NEO_WRBG: u8 = ((0 << 6) | (1 << 4) | (3 << 2) | (2)); ///< Transmit as W,R,B,G
-const NEO_WGRB: u8 = ((0 << 6) | (2 << 4) | (1 << 2) | (3)); ///< Transmit as W,G,R,B
-const NEO_WGBR: u8 = ((0 << 6) | (3 << 4) | (1 << 2) | (2)); ///< Transmit as W,G,B,R
-const NEO_WBRG: u8 = ((0 << 6) | (2 << 4) | (3 << 2) | (1)); ///< Transmit as W,B,R,G
-const NEO_WBGR: u8 = ((0 << 6) | (3 << 4) | (2 << 2) | (1)); ///< Transmit as W,B,G,R
+impl Order {
+    /// Bits 5,4 of this value are the offset (0-3) from the first byte of a
+    /// pixel to the location of the red color byte.  Bits 3,2 are the green
+    /// offset and 1,0 are the blue offset.  If it is an RGBW-type device
+    /// (supporting a white primary in addition to R,G,B), bits 7,6 are the
+    /// offset to the white byte...otherwise, bits 7,6 are set to the same value
+    /// as 5,4 (red) to indicate an RGB (not RGBW) device.
+    /// i.e. binary representation:
+    /// 0bWWRRGGBB for RGBW devices
+    /// 0bRRRRGGBB for RGB
+    fn byte(&self) {
+        use Order::*;
+        match self {
+            // RGB NeoPixel permutations; white and red offsets are always same
+            // Offset:   W          R          G          B
+            NEO_RGB => ((0 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B
+            NEO_RBG => ((0 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G
+            NEO_GRB => ((1 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B
+            NEO_GBR => ((2 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R
+            NEO_BRG => ((1 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G
+            NEO_BGR => ((2 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R
 
-const NEO_RWGB: u8 = ((1 << 6) | (0 << 4) | (2 << 2) | (3)); ///< Transmit as R,W,G,B
-const NEO_RWBG: u8 = ((1 << 6) | (0 << 4) | (3 << 2) | (2)); ///< Transmit as R,W,B,G
-const NEO_RGWB: u8 = ((2 << 6) | (0 << 4) | (1 << 2) | (3)); ///< Transmit as R,G,W,B
-const NEO_RGBW: u8 = ((3 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B,W
-const NEO_RBWG: u8 = ((2 << 6) | (0 << 4) | (3 << 2) | (1)); ///< Transmit as R,B,W,G
-const NEO_RBGW: u8 = ((3 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G,W
+            // RGBW NeoPixel permutations; all 4 offsets are distinct
+            // Offset:    W          R          G          B
+            NEO_WRGB => ((0 << 6) | (1 << 4) | (2 << 2) | (3)); ///< Transmit as W,R,G,B
+            NEO_WRBG => ((0 << 6) | (1 << 4) | (3 << 2) | (2)); ///< Transmit as W,R,B,G
+            NEO_WGRB => ((0 << 6) | (2 << 4) | (1 << 2) | (3)); ///< Transmit as W,G,R,B
+            NEO_WGBR => ((0 << 6) | (3 << 4) | (1 << 2) | (2)); ///< Transmit as W,G,B,R
+            NEO_WBRG => ((0 << 6) | (2 << 4) | (3 << 2) | (1)); ///< Transmit as W,B,R,G
+            NEO_WBGR => ((0 << 6) | (3 << 4) | (2 << 2) | (1)); ///< Transmit as W,B,G,R
 
-const NEO_GWRB: u8 = ((1 << 6) | (2 << 4) | (0 << 2) | (3)); ///< Transmit as G,W,R,B
-const NEO_GWBR: u8 = ((1 << 6) | (3 << 4) | (0 << 2) | (2)); ///< Transmit as G,W,B,R
-const NEO_GRWB: u8 = ((2 << 6) | (1 << 4) | (0 << 2) | (3)); ///< Transmit as G,R,W,B
-const NEO_GRBW: u8 = ((3 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B,W
-const NEO_GBWR: u8 = ((2 << 6) | (3 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,W,R
-const NEO_GBRW: u8 = ((3 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R,W
+            NEO_RWGB => ((1 << 6) | (0 << 4) | (2 << 2) | (3)); ///< Transmit as R,W,G,B
+            NEO_RWBG => ((1 << 6) | (0 << 4) | (3 << 2) | (2)); ///< Transmit as R,W,B,G
+            NEO_RGWB => ((2 << 6) | (0 << 4) | (1 << 2) | (3)); ///< Transmit as R,G,W,B
+            NEO_RGBW => ((3 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B,W
+            NEO_RBWG => ((2 << 6) | (0 << 4) | (3 << 2) | (1)); ///< Transmit as R,B,W,G
+            NEO_RBGW => ((3 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G,W
 
-const NEO_BWRG: u8 = ((1 << 6) | (2 << 4) | (3 << 2) | (0)); ///< Transmit as B,W,R,G
-const NEO_BWGR: u8 = ((1 << 6) | (3 << 4) | (2 << 2) | (0)); ///< Transmit as B,W,G,R
-const NEO_BRWG: u8 = ((2 << 6) | (1 << 4) | (3 << 2) | (0)); ///< Transmit as B,R,W,G
-const NEO_BRGW: u8 = ((3 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G,W
-const NEO_BGWR: u8 = ((2 << 6) | (3 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,W,R
-const NEO_BGRW: u8 = ((3 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R,W
+            NEO_GWRB => ((1 << 6) | (2 << 4) | (0 << 2) | (3)); ///< Transmit as G,W,R,B
+            NEO_GWBR => ((1 << 6) | (3 << 4) | (0 << 2) | (2)); ///< Transmit as G,W,B,R
+            NEO_GRWB => ((2 << 6) | (1 << 4) | (0 << 2) | (3)); ///< Transmit as G,R,W,B
+            NEO_GRBW => ((3 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B,W
+            NEO_GBWR => ((2 << 6) | (3 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,W,R
+            NEO_GBRW => ((3 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R,W
+
+            NEO_BWRG => ((1 << 6) | (2 << 4) | (3 << 2) | (0)); ///< Transmit as B,W,R,G
+            NEO_BWGR => ((1 << 6) | (3 << 4) | (2 << 2) | (0)); ///< Transmit as B,W,G,R
+            NEO_BRWG => ((2 << 6) | (1 << 4) | (3 << 2) | (0)); ///< Transmit as B,R,W,G
+            NEO_BRGW => ((3 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G,W
+            NEO_BGWR => ((2 << 6) | (3 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,W,R
+            NEO_BGRW => ((3 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R,W
+        }
+    }
+}
 
 /// 8-bit unsigned sine wave table (0-255).
 const SINE_TABLE: [u8; 256]  = [
@@ -67,32 +160,12 @@ const SINE_TABLE: [u8; 256]  = [
     79,  82,  85,  88,  90,  93,  97,  100, 103, 106, 109, 112, 115, 118, 121, 124,
 ];
 
-/// 8-bit gamma-correction table.
-const GAMMA_TABLE: [u8; 256] = [
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-    0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,   1,   1,
-    1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2,   2,   2,   2,   3,
-    3,   3,   3,   3,   3,   4,   4,   4,   4,   5,   5,   5,   5,   5,   6,
-    6,   6,   6,   7,   7,   7,   8,   8,   8,   9,   9,   9,   10,  10,  10,
-    11,  11,  11,  12,  12,  13,  13,  13,  14,  14,  15,  15,  16,  16,  17,
-    17,  18,  18,  19,  19,  20,  20,  21,  21,  22,  22,  23,  24,  24,  25,
-    25,  26,  27,  27,  28,  29,  29,  30,  31,  31,  32,  33,  34,  34,  35,
-    36,  37,  38,  38,  39,  40,  41,  42,  42,  43,  44,  45,  46,  47,  48,
-    49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,
-    64,  65,  66,  68,  69,  70,  71,  72,  73,  75,  76,  77,  78,  80,  81,
-    82,  84,  85,  86,  88,  89,  90,  92,  93,  94,  96,  97,  99,  100, 102,
-    103, 105, 106, 108, 109, 111, 112, 114, 115, 117, 119, 120, 122, 124, 125,
-    127, 129, 130, 132, 134, 136, 137, 139, 141, 143, 145, 146, 148, 150, 152,
-    154, 156, 158, 160, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180, 182,
-    184, 186, 188, 191, 193, 195, 197, 199, 202, 204, 206, 209, 211, 213, 215,
-    218, 220, 223, 225, 227, 230, 232, 235, 237, 240, 242, 245, 247, 250, 252, 255,
-];
-
 pub struct Neopixel<C, const LENGTH: usize> 
 where C: Color + Copy
 {
     begun: bool,
     pixels: [C; LENGTH],
+    order: Order,
     pin: Pin,
 }
 
@@ -100,10 +173,11 @@ impl<C, const LENGTH: usize> Neopixel<C, LENGTH>
 where C: Color + Copy
 {
     /// Creates a new instance of a Neopixel array.
-    pub fn new(pin: Pin, initializer: C) -> Neopixel<C, LENGTH> {
+    pub fn new(pin: Pin, order: Order, initializer: C) -> Neopixel<C, LENGTH> {
         Neopixel {
             begun: false,
             pixels: [initializer; LENGTH],
+            order
             pin
         }
     }
@@ -115,6 +189,4 @@ where C: Color + Copy
         }
         self.begun = true;
     }
-
-
 }
