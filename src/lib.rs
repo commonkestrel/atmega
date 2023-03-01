@@ -12,6 +12,7 @@ pub mod drivers;
 pub mod interrupts;
 pub mod libraries;
 pub mod prelude;
+pub mod progmem;
 pub mod registers;
 pub mod serial;
 pub mod timing;
