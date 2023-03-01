@@ -51,31 +51,21 @@ use atmega::prelude::*;
 ```
 The atmega prelude includes important functions and macros, like `digital_write()`, `pin_mode()`, `delay()`, just like the functions in the Arduino language.
 
-One caviat of using Rust as a language for this instead of C++ is that mutable global variables are much harder.
-Instead of these, we use a State `struct`, which can be passed into the main loop:
-```rust
-struct State {}
-```
-We won't use this for this example, but it can we still need to create it for reasons explained later.
-
 Next we need to add a `setup` function and initialize the pin the LED will be connected to:
 ```rust
-fn setup() -> State {
+fn setup() {
     pin_mode(Pin::D9, PinMode::OUTPUT);
-    State {}
 }
 ```
 In this example we are using pin D9 for the LED, and we initialize it to output.
-We need to return something from this function to pass into out loop, usually your `State`.
 
 Now we need a loop. Since the `loop` keyword is already taken, `run()` is used instead.
 ```rust
-fn run(_state: &mut State) {
+fn run() {
 
 }
 ```
-`run()` needs to take the return value of `setup` as input.
-It is not used in this example, so you can prefix it with `_`.
+This function will be called indefinetly in a loop, just like the `loop()` function in the Arduino language.
 
 Now we need to actually blink the LED.
 Add this inside `run()`:
@@ -100,14 +90,11 @@ use atmega::prelude::*;
 
 run!(setup, run);
 
-struct State {}
-
-fn setup() -> State {
+fn setup() {
     pin_mode(Pin::D9, PinMode::OUTPUT);
-    State {}
 }
 
-fn run(_state: &mut State) {
+fn run() {
     digital_toggle(Pin::D9);
     delay(1000);
 }
