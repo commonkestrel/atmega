@@ -4,7 +4,6 @@
 //! 
 //! Adapted from the official [NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel) created by Adafruit
 
-use crate::libraries::color::Color;
 use crate::wiring::{ Pin, PinMode, pin_mode, digital_write };
 
 /// The order of primary colors in the NeoPixel data stream can vary among
@@ -21,70 +20,70 @@ use crate::wiring::{ Pin, PinMode, pin_mode, digital_write };
 /// Most of these values won't exist in real-world devices, but it's done
 /// this way so we're ready for it (also, if using the WS2811 driver IC,
 /// one might have their pixels set up in any weird permutation).
-pub enum Order {
+pub enum Format {
     /// Transmit as R,G,B
-    RGB  
+    RGB,
     /// Transmit as R,B,G
-    RBG  
+    RBG,
     /// Transmit as G,R,B
-    GRB  
+    GRB,
     /// Transmit as G,B,R
-    GBR  
+    GBR,
     /// Transmit as B,R,G
-    BRG  
+    BRG,
     /// Transmit as B,G,R
-    BGR  
+    BGR,
     /// Transmit as W,R,G,B
-    WRGB  
+    WRGB,
     /// Transmit as W,R,G,B
-    WRBG  
+    WRBG,
     /// Transmit as W,G,R,B
-    WGRB  
+    WGRB,
     /// Transmit as W,G,B,R
-    WGBR  
+    WGBR,
     /// Transmit as W,B,R,G
-    WBRG  
+    WBRG,
     /// Transmit as W,B,G,R
-    WBGR  
+    WBGR,
     /// Transmit as R,W,G,B
-    RWGB  
+    RWGB,
     /// Transmit as R,W,B,G
-    RWBG  
+    RWBG,
     /// Transmit as R,G,W,B
-    RGWB  
+    RGWB,
     /// Transmit as R,G,B,W
-    RGBW  
+    RGBW,
     /// Transmit as R,B,W,G
-    RBWG  
+    RBWG,
     /// Transmit as R,B,G,W
-    RBGW  
+    RBGW,
     /// Transmit as G,W,R,B 
-    GWRB  
+    GWRB,
     /// Transmit as G,W,B,R
-    GWBR  
+    GWBR,
     /// Transmit as G,R,W,B
-    GRWB  
+    GRWB,
     /// Transmit as G,R,B,W
-    GRBW  
+    GRBW,
     /// Transmit as G,R,W,R
-    GBWR  
+    GBWR,
     /// Transmit as G,B,R,W
-    GBRW  
+    GBRW,
     /// Transmit as B,W,R,G
-    BWRG  
+    BWRG,
     /// Transmit as B,W,G,R
-    BWGR  
+    BWGR,
     /// Transmit as B,R,W,G
-    BRWG  
+    BRWG,
     /// Transmit as B,R,G,W
-    BRGW  
+    BRGW,
     /// Transmit as B,G,W,R
-    BGWR  
+    BGWR,
     /// Transmit as B,G,R,W
-    BGRW  
+    BGRW,
 }
 
-impl Order {
+impl Format {
     /// Bits 5,4 of this value are the offset (0-3) from the first byte of a
     /// pixel to the location of the red color byte.  Bits 3,2 are the green
     /// offset and 1,0 are the blue offset.  If it is an RGBW-type device
@@ -94,94 +93,138 @@ impl Order {
     /// i.e. binary representation:
     /// 0bWWRRGGBB for RGBW devices
     /// 0bRRRRGGBB for RGB
-    fn byte(&self) {
-        use Order::*;
+    const fn format(&self) -> u8 {
+        use Format::*;
         match self {
             // RGB NeoPixel permutations; white and red offsets are always same
-            // Offset:   W          R          G          B
-            NEO_RGB => ((0 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B
-            NEO_RBG => ((0 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G
-            NEO_GRB => ((1 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B
-            NEO_GBR => ((2 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R
-            NEO_BRG => ((1 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G
-            NEO_BGR => ((2 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R
+            // Offset:  W          R          G          B
+            RGB => (0 << 6) | (0 << 4) | (1 << 2) | (2),
+            RBG => (0 << 6) | (0 << 4) | (2 << 2) | (1),
+            GRB => (1 << 6) | (1 << 4) | (0 << 2) | (2),
+            GBR => (2 << 6) | (2 << 4) | (0 << 2) | (1),
+            BRG => (1 << 6) | (1 << 4) | (2 << 2) | (0),
+            BGR => (2 << 6) | (2 << 4) | (1 << 2) | (0),
 
             // RGBW NeoPixel permutations; all 4 offsets are distinct
-            // Offset:    W          R          G          B
-            NEO_WRGB => ((0 << 6) | (1 << 4) | (2 << 2) | (3)); ///< Transmit as W,R,G,B
-            NEO_WRBG => ((0 << 6) | (1 << 4) | (3 << 2) | (2)); ///< Transmit as W,R,B,G
-            NEO_WGRB => ((0 << 6) | (2 << 4) | (1 << 2) | (3)); ///< Transmit as W,G,R,B
-            NEO_WGBR => ((0 << 6) | (3 << 4) | (1 << 2) | (2)); ///< Transmit as W,G,B,R
-            NEO_WBRG => ((0 << 6) | (2 << 4) | (3 << 2) | (1)); ///< Transmit as W,B,R,G
-            NEO_WBGR => ((0 << 6) | (3 << 4) | (2 << 2) | (1)); ///< Transmit as W,B,G,R
+            // Offset:   W          R          G          B
+            WRGB => (0 << 6) | (1 << 4) | (2 << 2) | (3),
+            WRBG => (0 << 6) | (1 << 4) | (3 << 2) | (2),
+            WGRB => (0 << 6) | (2 << 4) | (1 << 2) | (3),
+            WGBR => (0 << 6) | (3 << 4) | (1 << 2) | (2),
+            WBRG => (0 << 6) | (2 << 4) | (3 << 2) | (1),
+            WBGR => (0 << 6) | (3 << 4) | (2 << 2) | (1),
 
-            NEO_RWGB => ((1 << 6) | (0 << 4) | (2 << 2) | (3)); ///< Transmit as R,W,G,B
-            NEO_RWBG => ((1 << 6) | (0 << 4) | (3 << 2) | (2)); ///< Transmit as R,W,B,G
-            NEO_RGWB => ((2 << 6) | (0 << 4) | (1 << 2) | (3)); ///< Transmit as R,G,W,B
-            NEO_RGBW => ((3 << 6) | (0 << 4) | (1 << 2) | (2)); ///< Transmit as R,G,B,W
-            NEO_RBWG => ((2 << 6) | (0 << 4) | (3 << 2) | (1)); ///< Transmit as R,B,W,G
-            NEO_RBGW => ((3 << 6) | (0 << 4) | (2 << 2) | (1)); ///< Transmit as R,B,G,W
+            RWGB => (1 << 6) | (0 << 4) | (2 << 2) | (3),
+            RWBG => (1 << 6) | (0 << 4) | (3 << 2) | (2),
+            RGWB => (2 << 6) | (0 << 4) | (1 << 2) | (3),
+            RGBW => (3 << 6) | (0 << 4) | (1 << 2) | (2),
+            RBWG => (2 << 6) | (0 << 4) | (3 << 2) | (1),
+            RBGW => (3 << 6) | (0 << 4) | (2 << 2) | (1),
 
-            NEO_GWRB => ((1 << 6) | (2 << 4) | (0 << 2) | (3)); ///< Transmit as G,W,R,B
-            NEO_GWBR => ((1 << 6) | (3 << 4) | (0 << 2) | (2)); ///< Transmit as G,W,B,R
-            NEO_GRWB => ((2 << 6) | (1 << 4) | (0 << 2) | (3)); ///< Transmit as G,R,W,B
-            NEO_GRBW => ((3 << 6) | (1 << 4) | (0 << 2) | (2)); ///< Transmit as G,R,B,W
-            NEO_GBWR => ((2 << 6) | (3 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,W,R
-            NEO_GBRW => ((3 << 6) | (2 << 4) | (0 << 2) | (1)); ///< Transmit as G,B,R,W
+            GWRB => (1 << 6) | (2 << 4) | (0 << 2) | (3),
+            GWBR => (1 << 6) | (3 << 4) | (0 << 2) | (2),
+            GRWB => (2 << 6) | (1 << 4) | (0 << 2) | (3),
+            GRBW => (3 << 6) | (1 << 4) | (0 << 2) | (2),
+            GBWR => (2 << 6) | (3 << 4) | (0 << 2) | (1),
+            GBRW => (3 << 6) | (2 << 4) | (0 << 2) | (1),
 
-            NEO_BWRG => ((1 << 6) | (2 << 4) | (3 << 2) | (0)); ///< Transmit as B,W,R,G
-            NEO_BWGR => ((1 << 6) | (3 << 4) | (2 << 2) | (0)); ///< Transmit as B,W,G,R
-            NEO_BRWG => ((2 << 6) | (1 << 4) | (3 << 2) | (0)); ///< Transmit as B,R,W,G
-            NEO_BRGW => ((3 << 6) | (1 << 4) | (2 << 2) | (0)); ///< Transmit as B,R,G,W
-            NEO_BGWR => ((2 << 6) | (3 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,W,R
-            NEO_BGRW => ((3 << 6) | (2 << 4) | (1 << 2) | (0)); ///< Transmit as B,G,R,W
+            BWRG => (1 << 6) | (2 << 4) | (3 << 2) | (0),
+            BWGR => (1 << 6) | (3 << 4) | (2 << 2) | (0),
+            BRWG => (2 << 6) | (1 << 4) | (3 << 2) | (0),
+            BRGW => (3 << 6) | (1 << 4) | (2 << 2) | (0),
+            BGWR => (2 << 6) | (3 << 4) | (1 << 2) | (0),
+            BGRW => (3 << 6) | (2 << 4) | (1 << 2) | (0),
+        }
+    }
+
+    const fn is_rgb(&self) -> bool {
+        use Format::*;
+        match self {
+            RGB => true,
+            RBG => true,
+            GRB => true,
+            GBR => true,
+            BRG => true,
+            BGR => true,
+            _ => false,
         }
     }
 }
 
-/// 8-bit unsigned sine wave table (0-255).
-const SINE_TABLE: [u8; 256]  = [
-    128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170,
-    173, 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211,
-    213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240,
-    241, 243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254,
-    254, 255, 255, 255, 255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251,
-    250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232,
-    230, 228, 226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198,
-    196, 193, 190, 188, 185, 182, 179, 176, 173, 170, 167, 165, 162, 158, 155,
-    152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109,
-    106, 103, 100, 97,  93,  90,  88,  85,  82,  79,  76,  73,  70,  67,  65,
-    62,  59,  57,  54,  52,  49,  47,  44,  42,  40,  37,  35,  33,  31,  29,
-    27,  25,  23,  21,  20,  18,  17,  15,  14,  12,  11,  10,  9,   7,   6,
-    5,   5,   4,   3,   2,   2,   1,   1,   1,   0,   0,   0,   0,   0,   0,
-    0,   1,   1,   1,   2,   2,   3,   4,   5,   5,   6,   7,   9,   10,  11,
-    12,  14,  15,  17,  18,  20,  21,  23,  25,  27,  29,  31,  33,  35,  37,
-    40,  42,  44,  47,  49,  52,  54,  57,  59,  62,  65,  67,  70,  73,  76,
-    79,  82,  85,  88,  90,  93,  97,  100, 103, 106, 109, 112, 115, 118, 121, 124,
-];
+use crate::progmem;
 
-pub struct Neopixel<C, const LENGTH: usize> 
-where C: Color + Copy
-{
+progmem! {
+    /// 8-bit gamma-correction table.
+    static progmem GAMMA_TABLE: [u8; 256] = [
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,   1,   1,
+        1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2,   2,   2,   2,   3,
+        3,   3,   3,   3,   3,   4,   4,   4,   4,   5,   5,   5,   5,   5,   6,
+        6,   6,   6,   7,   7,   7,   8,   8,   8,   9,   9,   9,   10,  10,  10,
+        11,  11,  11,  12,  12,  13,  13,  13,  14,  14,  15,  15,  16,  16,  17,
+        17,  18,  18,  19,  19,  20,  20,  21,  21,  22,  22,  23,  24,  24,  25,
+        25,  26,  27,  27,  28,  29,  29,  30,  31,  31,  32,  33,  34,  34,  35,
+        36,  37,  38,  38,  39,  40,  41,  42,  42,  43,  44,  45,  46,  47,  48,
+        49,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,
+        64,  65,  66,  68,  69,  70,  71,  72,  73,  75,  76,  77,  78,  80,  81,
+        82,  84,  85,  86,  88,  89,  90,  92,  93,  94,  96,  97,  99,  100, 102,
+        103, 105, 106, 108, 109, 111, 112, 114, 115, 117, 119, 120, 122, 124, 125,
+        127, 129, 130, 132, 134, 136, 137, 139, 141, 143, 145, 146, 148, 150, 152,
+        154, 156, 158, 160, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180, 182,
+        184, 186, 188, 191, 193, 195, 197, 199, 202, 204, 206, 209, 211, 213, 215,
+        218, 220, 223, 225, 227, 230, 232, 235, 237, 240, 242, 245, 247, 250, 252, 255,
+    ];
+}
+
+progmem! {
+    /// 8-bit unsigned sine wave table (0-255).
+    static progmem SINE_TABLE: [u8; 256]  = [
+        128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170,
+        173, 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211,
+        213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240,
+        241, 243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254,
+        254, 255, 255, 255, 255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251,
+        250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232,
+        230, 228, 226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198,
+        196, 193, 190, 188, 185, 182, 179, 176, 173, 170, 167, 165, 162, 158, 155,
+        152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109,
+        106, 103, 100, 97,  93,  90,  88,  85,  82,  79,  76,  73,  70,  67,  65,
+        62,  59,  57,  54,  52,  49,  47,  44,  42,  40,  37,  35,  33,  31,  29,
+        27,  25,  23,  21,  20,  18,  17,  15,  14,  12,  11,  10,  9,   7,   6,
+        5,   5,   4,   3,   2,   2,   1,   1,   1,   0,   0,   0,   0,   0,   0,
+        0,   1,   1,   1,   2,   2,   3,   4,   5,   5,   6,   7,   9,   10,  11,
+        12,  14,  15,  17,  18,  20,  21,  23,  25,  27,  29,  31,  33,  35,  37,
+        40,  42,  44,  47,  49,  52,  54,  57,  59,  62,  65,  67,  70,  73,  76,
+        79,  82,  85,  88,  90,  93,  97,  100, 103, 106, 109, 112, 115, 118, 121, 124,
+    ];
+}
+
+/// Stores state and methods for interacting with 
+/// Adafruit NeoPixels and compatible devices.
+pub struct Neopixel<const LENGTH: usize> {
+    /// Whether the `begin()` method has been called on this instance.
     begun: bool,
-    pixels: [C; LENGTH],
-    order: Order,
+    /// The state of each pixel.
+    pixels: [u32; LENGTH],
+    /// The transmission format.
+    format: Format,
+    /// The signal pin connected to the array.
     pin: Pin,
 }
 
-impl<C, const LENGTH: usize> Neopixel<C, LENGTH> 
-where C: Color + Copy
-{
+impl<const LENGTH: usize> Neopixel<LENGTH> {
     /// Creates a new instance of a Neopixel array.
-    pub fn new(pin: Pin, order: Order, initializer: C) -> Neopixel<C, LENGTH> {
+    /// Call the `begin()` method before use.
+    pub fn new(pin: Pin, format: Format) -> Neopixel<LENGTH> {
         Neopixel {
             begun: false,
-            pixels: [initializer; LENGTH],
-            order
+            pixels: [0; LENGTH],
+            format,
             pin
         }
     }
 
+    /// Configure the NeoPixel pin for output.
     pub fn begin(&mut self) {
         if self.pin != Pin::D0 {
             pin_mode(self.pin, PinMode::OUTPUT);
