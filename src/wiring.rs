@@ -86,13 +86,9 @@ pub enum Pin {
     A1,
     A2,
     A3,
-    #[cfg(not(feature = "twowire"))]
     A4,
-    #[cfg(not(feature = "twowire"))]
     A5,
-    #[cfg(feature = "twowire")]
     SDA,
-    #[cfg(feature = "twowire")]
     SCL,
 }
 
@@ -162,40 +158,6 @@ impl Timer {
     }
 }
 
-impl From<u8> for Pin {
-    fn from(value: u8) -> Self {
-        match value {
-            0  => Self::D0,
-            1  => Self::D1,
-            2  => Self::D2,
-            3  => Self::D3,
-            4  => Self::D4,
-            5  => Self::D5,
-            6  => Self::D6,
-            7  => Self::D7,
-            8  => Self::D8,
-            9  => Self::D9,
-            10 => Self::D10,
-            11 => Self::D11,
-            12 => Self::D12,
-            13 => Self::D13,
-            14 => Self::A0,
-            15 => Self::A1,
-            16 => Self::A2,
-            17 => Self::A3,
-            #[cfg(not(feature = "twowire"))]
-            18 => Self::A4,
-            #[cfg(not(feature = "twowire"))]
-            19 => Self::A5,
-            #[cfg(feature = "twowire")]
-            18 => Self::SDA,
-            #[cfg(feature = "twowire")]
-            19 => Self::SCL,
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl core::fmt::Display for Pin {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "")
@@ -216,10 +178,15 @@ pub const HIGH: bool = true;
 /// A low value, usually 0V
 pub const LOW: bool = false;
 
+/// The registers and offset of a pin.
+/// This applies to `PORTx`, `PINx`, and `DDRx`.
 #[derive(Debug, Clone)]
-enum Registers {
+pub enum Registers {
+    /// B registers: `PORTB`, `PINB`, and `DDRB`
     B(u8),
+    /// C registers: `PORTC`, `PINC`, and `DDRC`
     C(u8),
+    /// D registers: `PORTD`, `PIND`, and `DDRD`
     D(u8),
 }
 
@@ -244,13 +211,9 @@ impl From<Pin> for Registers {
             Pin::A1  => Registers::C(1),
             Pin::A2  => Registers::C(2),
             Pin::A3  => Registers::C(3),
-            #[cfg(not(feature = "twowire"))]
             Pin::A4  => Registers::C(4),
-            #[cfg(not(feature = "twowire"))]
             Pin::A5  => Registers::C(5),
-            #[cfg(feature = "twowire")]
             Pin::SDA => Registers::C(4),
-            #[cfg(feature = "twowire")]
             Pin::SCL => Registers::C(5),
         }
     }
