@@ -4,6 +4,7 @@
 //! 
 //! Adapted from the official [NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel) created by Adafruit
 
+use crate::timing::micros;
 use crate::wiring::{ Pin, PinMode, pin_mode, digital_write };
 
 /// The order of primary colors in the NeoPixel data stream can vary among
@@ -154,8 +155,8 @@ impl Format {
 use crate::progmem;
 
 progmem! {
-    /// 8-bit gamma-correction table.
-    static progmem GAMMA_TABLE: [u8; 256] = [
+    /// A PROGMEM (flash mem) 8-bit gamma-correction table.
+    progmem GAMMA_TABLE: [u8; 256] = [
         0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
         0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,   1,   1,
         1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2,   2,   2,   2,   3,
@@ -177,8 +178,8 @@ progmem! {
 }
 
 progmem! {
-    /// 8-bit unsigned sine wave table (0-255).
-    static progmem SINE_TABLE: [u8; 256]  = [
+    /// A PROGMEM (flash mem) 8-bit unsigned sine wave table (0-255).
+    progmem SINE_TABLE: [u8; 256]  = [
         128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170,
         173, 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211,
         213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240,
@@ -210,6 +211,8 @@ pub struct Neopixel<const LENGTH: usize> {
     format: Format,
     /// The signal pin connected to the array.
     pin: Pin,
+    /// 
+    end_time: u64,
 }
 
 impl<const LENGTH: usize> Neopixel<LENGTH> {
@@ -220,8 +223,13 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
             begun: false,
             pixels: [0; LENGTH],
             format,
-            pin
+            pin,
+            end_time: 0,
         }
+    }
+
+    pub fn can_show(&self) -> bool {
+
     }
 
     /// Configure the NeoPixel pin for output.
@@ -231,5 +239,37 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
             digital_write(self.pin, false);
         }
         self.begun = true;
+    }
+
+    pub fn set(&mut self, light: usize, color: u32) {
+        // Make sure write is safe
+        if light >= LEN {
+            return;
+        }
+
+
+    }
+
+    pub fn set_rgb(&mut self, light: usize, red: u8, green: u8, blue: u8) {
+        if light >= LEN {
+            return;
+        }
+
+        
+    }
+
+    pub fn fill(&mut self, color: u32) {
+
+    }
+
+    pub fn show(&self) {
+
+    }
+}
+
+impl<const LEN: usize> Drop for Neopixel<LEN> {
+    fn drop(&mut self) {
+        self.fill(0);
+        self.show();
     }
 }
