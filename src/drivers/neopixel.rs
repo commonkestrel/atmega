@@ -4,8 +4,11 @@
 //! 
 //! Adapted from the official [NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel) created by Adafruit
 
+use crate::progmem;
 use crate::timing::micros;
-use crate::wiring::{ Pin, PinMode, pin_mode, digital_write };
+use crate::constants::CPU_FREQUENCY;
+use crate::registers::{ PORTB, PORTC, PORTD, Register };
+use crate::wiring::{ Pin, PinMode, pin_mode, digital_write, Registers };
 
 /// The order of primary colors in the NeoPixel data stream can vary among
 /// device types, manufacturers and even different revisions of the same
@@ -152,8 +155,6 @@ impl Format {
     }
 }
 
-use crate::progmem;
-
 progmem! {
     /// A PROGMEM (flash mem) 8-bit gamma-correction table.
     progmem GAMMA_TABLE: [u8; 256] = [
@@ -175,9 +176,7 @@ progmem! {
         184, 186, 188, 191, 193, 195, 197, 199, 202, 204, 206, 209, 211, 213, 215,
         218, 220, 223, 225, 227, 230, 232, 235, 237, 240, 242, 245, 247, 250, 252, 255,
     ];
-}
 
-progmem! {
     /// A PROGMEM (flash mem) 8-bit unsigned sine wave table (0-255).
     progmem SINE_TABLE: [u8; 256]  = [
         128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170,
@@ -228,9 +227,7 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
         }
     }
 
-    pub fn can_show(&self) -> bool {
-
-    }
+    
 
     /// Configure the NeoPixel pin for output.
     pub fn begin(&mut self) {
@@ -240,10 +237,30 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
         }
         self.begun = true;
     }
+    
+    /// Check whether a call to `show()` will start sending data
+    /// immediately or will block for a required interval.
+    /// 
+    /// Neopixels require a short quiet time (about 300 microseconds)
+    /// after the last bit is received before the data 'latches' and
+    /// new data can start being received.
+    /// 
+    /// Usually one's program is implicitly using this time to generate
+    /// a new frame of animation, but if it finishes very quickly, this
+    /// function could be used to see if there's some idle time available
+    /// for some low-priority concurrent task.
+    pub fn can_show(&mut self) -> bool {
+        let now = micros();
+        if self.end_time > now {
+            self.end_time = now;
+        }
+        (now - self.end_time) >= 300
+    }
 
+    ///
     pub fn set(&mut self, light: usize, color: u32) {
         // Make sure write is safe
-        if light >= LEN {
+        if light >= LENGTH {
             return;
         }
 
@@ -251,7 +268,7 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
     }
 
     pub fn set_rgb(&mut self, light: usize, red: u8, green: u8, blue: u8) {
-        if light >= LEN {
+        if light >= LENGTH {
             return;
         }
 
@@ -262,14 +279,79 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
 
     }
 
-    pub fn show(&self) {
+    pub fn show(&mut self) {
+        // Data latch = 300+ microsecond pause in the output stream. rather than
+        // put a delay at the end of the function, the ending time is noted and
+        // the function will simply hold off (if needed) on issuing the
+        // subsequent round of data until the latch time has elapsed. This
+        // allows the mainline code to start generating the next frame of data
+        // rather than stalling for the latch.
+        while !self.can_show() {}
 
+        // In order to make this code work with any pin, SBI/CBI
+        // instructions are eschewed in favor of full PORT writes via the
+        // OUT or ST instructions. It relies on two facts: that peripheral
+        // functions (such as PWM) take precedence on output pins, so our PORT-
+        // wide writes won't interfere, and that interrupts are globally disabled
+        // while data is being issued to the LEDs, so no other code will be accessing
+        // the PORT. The code takes an initial 'snapshot' orf the PORT state,
+        // conputes 'pin high' and 'pin low' values, and writes these back to the 
+        // PORT register as needed.
+
+        let hi = 0xFF;
+        let lo = 0x00;
+
+        // 8 MHz(ish) AVR
+        if CPU_FREQUENCY >= 7_400_000 && CPU_FREQUENCY <= 9_500_000 {
+            let port: Registers = self.pin.into();
+
+            match port {
+                Registers::D(offset) => {
+                    let pin_mask = 1 << offset;
+
+                    let portd = unsafe { PORTD::read() };
+                    let hi = portd | pin_mask;
+                    let low = portd & !pin_mask;
+
+                },
+                Registers::C(offset) => {
+
+                },
+                Registers::B(offset) => {
+
+                },
+            }
+        }
     }
 }
 
-impl<const LEN: usize> Drop for Neopixel<LEN> {
+impl<const LENGTH: usize> Drop for Neopixel<LENGTH> {
     fn drop(&mut self) {
+        // Clear NeoPixels
         self.fill(0);
         self.show();
     }
+}
+
+/// An 8-bit integer sine wave function, not directly compatible
+/// with standard trigonometric units like radians or degrees.
+/// 
+/// x is an input angle, 0-255. 256 would loop back to zero, 
+/// completing the circle (equivalent to 360 degrees or 2 pi radians).
+/// One can therefore use an unsiagned 8-bit variable (`u8`) and simply use
+/// `wrapping_add` or `wrapping_sub` for the expected contiguous output.
+pub fn sine8(x: u8) -> u8 {
+    SINE_TABLE.read_byte(x as usize)
+}
+
+/// An 8-bit gamma-correction function for basic pixel brightness
+/// adjustment. makes color transitions appear more perceptially
+/// correct.
+/// 
+/// Uses a fixed gamma correction exponent of 2.6, which seems
+/// reasonably okay for average NeoPixels in average tasks. If
+/// you need finer control you'll need to provide your own
+/// gamma-correction function instead.
+pub fn gamma8(x: u8) -> u8 {
+    GAMMA_TABLE.read_byte(x as usize)
 }
