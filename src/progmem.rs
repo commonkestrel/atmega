@@ -132,7 +132,7 @@ unsafe impl<T: Sized> Sync for ProgMem<T> {}
 macro_rules! progmem {
     {   
         $(#[$attr:meta])*
-        $vis:vis static progmem $name:ident: $ty:ty = $value:expr;
+        $vis:vis progmem $name:ident: $ty:ty = $value:expr;
     } => {
         $(#[$attr])*
         $vis static $name: $crate::progmem::ProgMem<$ty> = {
