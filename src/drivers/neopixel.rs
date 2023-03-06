@@ -5,6 +5,7 @@
 //! Adapted from the official [NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel) created by Adafruit
 
 use crate::progmem;
+use crate::interrupts;
 use crate::timing::micros;
 use crate::constants::CPU_FREQUENCY;
 use crate::registers::{ PORTB, PORTC, PORTD, Register };
@@ -298,6 +299,8 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
         // conputes 'pin high' and 'pin low' values, and writes these back to the 
         // PORT register as needed.
 
+        interrupts::disable();
+
         let hi = 0xFF;
         let lo = 0x00;
 
@@ -313,6 +316,7 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
                     let hi = portd | pin_mask;
                     let low = portd & !pin_mask;
 
+                    
                 },
                 Registers::C(offset) => {
 
