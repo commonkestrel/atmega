@@ -5,6 +5,7 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
+pub mod allocator;
 pub mod bits;
 pub mod buffer;
 pub mod constants;
