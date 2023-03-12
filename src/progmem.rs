@@ -115,7 +115,7 @@ pub unsafe fn read_value<T: Sized>(addr: *const T) -> T {
 /// Should be instantiated with the `progmem!` macro.
 /// 
 /// # Example
-/// ```rust,norun
+/// ```rust,no_run
 /// progmem! {
 ///     progmem NUMBER: u8 = 42;
 ///     progmem SQUARES: [u8; 5] = [0, 1, 4, 9, 16];
@@ -147,7 +147,7 @@ impl<T: Sized> ProgMem<T> {
     /// Can be used to read just the value at an index of an array.
     /// 
     /// # Example
-    /// ```rust,norun
+    /// ```rust,no_run
     /// progmem! {
     ///     progmem SQUARES: [u8; 5] = [0, 1, 4, 9, 16];
     /// }
@@ -194,7 +194,7 @@ unsafe impl<T: Sized> Sync for ProgMem<T> {}
 /// 
 /// # Examples
 /// Basic storage and load of a constant in progmem:
-/// ```rust,norun
+/// ```rust,no_run
 /// progmem! {
 ///     progmem VALUE: u8 = 42;     
 /// }
@@ -204,7 +204,7 @@ unsafe impl<T: Sized> Sync for ProgMem<T> {}
 /// }
 /// ```
 /// Storage of multiple values:
-/// ```rust,norun
+/// ```rust,no_run
 /// progmem! {
 ///     progmem THREE: usize = 3;
 ///     progmem CUBES: [u8; 5] = [0, 1, 8, 27, 64];
@@ -212,7 +212,7 @@ unsafe impl<T: Sized> Sync for ProgMem<T> {}
 /// }
 /// ```
 /// Usage of arrays in progmem:
-/// ```rust,norun
+/// ```rust,no_run
 /// progmem!{
 ///     progmem SQUARES: [usize; 5] = [0, 1, 4, 9, 16];
 /// }
