@@ -31,12 +31,12 @@ pub fn unix() -> Result<u64, Error> {
 
 /// Read the current time from the DS1307
 pub fn read() -> Result<DateTime, Error> {
+    wire::begin_transmission(DS1307_ADDRESS);
     wire::write(0x00).map_err(|_| Error::WriteFail)?;
-
     if wire::end_transmission(true).is_err() {
         return Err(Error::NotExist);
     }
-
+    
     let req = wire::request_from(DS1307_ADDRESS, FIELDS as u8, true);
     if wire::available() < FIELDS || req.is_err() {
         return Err(Error::RequestFailed);
