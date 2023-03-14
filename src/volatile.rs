@@ -1,6 +1,6 @@
 //! A dead simple safe(ish) way to communicate to and from interrupts with global statics.
 
-use crate::interrupts;
+use crate::interrupts::{ self, State };
 use core::cell::UnsafeCell;
 use core::ptr::{ write_volatile, read_volatile };
 
@@ -20,34 +20,40 @@ impl<T: Copy> Volatile<T> {
     /// Reads the stored data.
     #[inline(always)]
     pub fn read(&self) -> T {
-        interrupts::without(|| unsafe { read_volatile(self.0.get()) })
+        interrupts::without(State::Restore, || unsafe { read_volatile(self.0.get()) })
     }
     
     /// Overwrites the stored data.
     #[inline(always)]
     pub fn write(&self, value: T) {
-        interrupts::without(|| unsafe { write_volatile(self.0.get(), value); });
+        interrupts::without(State::Restore, || unsafe { write_volatile(self.0.get(), value); });
     }
 
-    /// Reads the value and writes the output of the operation.
-    #[inline(always)]
-    pub fn operate<F: Fn(T) -> T>(&self, operator: F) {
-        interrupts::without(|| unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
+    /// Passes the current value into the 
+    pub fn operate<F: FnMut(T) -> T>(&self, mut operator: F) {
+        interrupts::without(State::Restore, || unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
 
     /// Consumes the wrapper and returns the data contained
     #[inline(always)]
     pub fn into_inner(self) -> T {
-        interrupts::without(|| self.0.into_inner())
+        self.0.into_inner()
+    }
+
+    pub fn as_deref<F, R>(&self, mut operation: F) -> R
+    where F: FnMut(&T) -> R
+    {
+        interrupts::without(State::Restore, || {
+            unsafe { operation(&*self.0.get()) }
+        })
     }
     
     /// Passes the data of type `T` and passes it into the given function as `&mut T`.
     /// Allows the changing of the inner data without reading and overwriting all contents.
-    #[inline(always)]
-    pub fn as_mut<F, R>(&self, operation: F) -> R
-    where F: Fn(&mut T) -> R
+    pub fn as_mut<F, R>(&self, mut operation: F) -> R
+    where F: FnMut(&mut T) -> R
     {
-        interrupts::without(|| {
+        interrupts::without(State::Restore, || {
             unsafe { operation(&mut *self.0.get()) }
         })
     }
