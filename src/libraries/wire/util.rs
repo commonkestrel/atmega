@@ -269,6 +269,10 @@ pub enum ReadError {
     Timeout,
 }
 
+/// Attempts to become TWI bus controller and read a
+/// series of bytes from a device on the bus.
+/// 
+/// `address` is a 7-bit I2C device address.
 pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuffer, ReadError> {
     // Ensure data will fit into buffer
     if TWI_BUFFER_LENGTH < length as usize {
@@ -285,7 +289,7 @@ pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuff
     
     twi_state.write(State::CRX);
     twi_send_stop.write(send_stop);
-
+    // Reset error state (0xFF.. no error occurred)
     twi_error.write(0xFF);
 
     twi_master_buffer.as_mut(|buf| {
@@ -302,12 +306,20 @@ pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuff
 
     unsafe {
         if twi_in_rep_start.read() {
-            twi_in_rep_start.write(false);
+            // If we're in the repeated start state, then we've already sent the start,
+            // (we hope), and the TWI statemachine is just waiting for the address byte.
+            // We need to remove ourselves from the repeated start state before we enable interrupts,
+            // since the ISR is ASYNC, and we could get confused if we hit the ISR before cleaning
+            // up. Also, don't enable the START interrupt. There may be one pending from the
+            // repeated start that we sent ourselves, and that would really confuse things.
+            twi_in_rep_start.write(false); // Remember, we're dealing with an ASYNC ISR
+
             let start_micros = micros();
+            let timeout_us = twi_timeout_us.read();
 
             while TWCR::TWWC.read_bit() {
                 TWDR::write(twi_slarw.read());
-                if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+                if timeout_us > 0 && (micros() - start_micros) > timeout_us as u64 {
                     twi_handle_timeout(twi_do_reset_on_timeout.read());
                     return Err(ReadError::Timeout);
                 }
@@ -317,6 +329,7 @@ pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuff
             TWCR::TWEA.set();
             TWCR::TWEN.set();
             TWCR::TWIE.set();
+            TWCR::TWSTA.clear();
         } else {
             // Sent start condition
             TWCR::TWINT.set();
