@@ -13,6 +13,10 @@ fn setup() {
 }
 
 fn run() {
-    println!("hi {:?}", ds1307::read());
-    delay(1000);
+    let time = ds1307::read();
+    println!("hi");
+    match time {
+        Ok(t) => println!("{}", t),
+        Err(e) => println!("{:?}", e),
+    }
 }
