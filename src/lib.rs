@@ -1,7 +1,7 @@
 //! A fast, easy, recognizable interface for the ATmega328p
 
 #![no_std]
-#![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg, exclusive_range_pattern)]
+#![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg, exclusive_range_pattern, maybe_uninit_uninit_array, const_maybe_uninit_uninit_array)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
@@ -57,8 +57,7 @@ macro_rules! run {
 
 /// Panic handler.
 #[panic_handler]
-pub fn panic(info: &core::panic::PanicInfo) -> ! {
-    println!("panic: {}", info);
+pub fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
