@@ -22,7 +22,7 @@ use crate::volatile::Volatile;
 
 #[cfg(any(feature = "serial-buffer", doc))]
 #[doc(cfg(feature = "serial-buffer"))]
-static USART_BUFFER: Volatile<Buffer<32>> = Volatile::new(Buffer::new());
+static USART_BUFFER: Volatile<Buffer<u8, 32>> = Volatile::new(Buffer::new());
 
 /// Easy interface with the USART with `core::fmt::Write` implemented.
 pub struct Serial;
