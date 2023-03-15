@@ -230,9 +230,13 @@ fn on_receive_service(bytes_in: ByteBuffer, num_bytes: usize) {
     if let Some(callback) = user_on_receive.read() {
         // Copy twi rx buffer into local read buffewr
         // This enables new reads to happen in parallel
-        for i in 0..num_bytes {
-            rx_buffer.as_mut(|buf| buf.inner[i] = bytes_in.inner[i]);
-        }
+        rx_buffer.as_mut(|buf| {
+            for i in 0..num_bytes {
+                buf.inner[i] = bytes_in.inner[i];
+            }
+            buf.index = 0;
+            buf.length = num_bytes;
+        });
         callback(num_bytes as usize);
     }
 }
