@@ -68,21 +68,60 @@ pub fn enable() {
     unsafe { asm!("sei"); }
 }
 
+/// Status of the Status Register
+pub struct Status(u8);
+
 /// Disables global interrupts
 #[inline(always)]
-pub fn disable() {
-    unsafe { asm!("cli"); }
+pub fn disable() -> Status {
+    let sreg: u8;
+
+    unsafe {
+        asm!(    
+            "in {0}, 0x3F",
+            "cli",
+            out(reg) sreg,
+            options(nostack),
+        )
+    }
+
+    Status(sreg)
 }
 
-/// Runs a function with interrupts disabled
-pub fn without<F, R>(f: F) -> R
+/// The state to set interrupts after running a function in `without()`.
+pub enum State {
+    /// Forces interrutps on.
+    ForceOn,
+    /// Forces interrupts off.
+    ForceOff,
+    /// Restores state from before execution.
+    Restore,
+}
+
+/// Runs a function with interrupts disabled, setting interupts to the given state after.
+pub fn without<F, R>(after: State, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    disable();
+    let state = disable();
     let r = f();
-    enable();
+    match after {
+        State::ForceOn => { enable(); },
+        State::ForceOff => { disable(); },
+        State::Restore => unsafe { restore(state) },
+    }
     r
+}
+
+/// 
+pub unsafe fn restore(Status(sreg): Status) {
+    unsafe {
+        asm!(
+            "out 0x3F, {0}",
+            in(reg) sreg,
+            options(nostack),
+        )
+    }
 }
 
 /// Checks if global interrupts are enabled
