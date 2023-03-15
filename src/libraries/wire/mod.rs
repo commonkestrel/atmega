@@ -1,14 +1,16 @@
 //! Implementation of the I2C protocol via the Arduino [Wire](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire) library
+//! 
+//! Implementation and most documentation taken from the official [Wire source](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
+
 #![allow(non_upper_case_globals, unused_must_use)]
 
 use crate::volatile::Volatile;
-use crate::buffer::Buffer;
 
 mod util;
-use util::TWI_BUFFER_LENGTH;
+pub use util::{ ReadError, TransmitError, ByteBuffer, TWI_BUFFER_LENGTH };
 
-static rx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
-static tx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
+static rx_buffer: Volatile<ByteBuffer> = Volatile::new(ByteBuffer::new());
+static tx_buffer: Volatile<ByteBuffer> = Volatile::new(ByteBuffer::new());
 static tx_address: Volatile<u8> = Volatile::new(0);
 static transmitting: Volatile<bool> = Volatile::new(false);
 
@@ -17,8 +19,8 @@ static user_on_request: Volatile<Option<fn()>> = Volatile::new(None);
 
 /// Initialize TWI interface 
 pub fn begin() {
-    rx_buffer.as_mut(|buf| buf.clear());
-    tx_buffer.as_mut(|buf| buf.clear());
+    rx_buffer.as_mut(|buf| buf.reset());
+    tx_buffer.as_mut(|buf| buf.reset());
 
     util::twi_init();
 
@@ -80,7 +82,7 @@ pub fn clear_wire_timeout_flag() {
 }
 
 /// Request data from the given address after transmitting to the internal register address given.
-pub fn iaddr_request_from(address: u8, quantity: u8, iaddress: u32, addr_size: u8, send_stop: bool) -> Result<(), ()> {
+pub fn iaddr_request_from(address: u8, quantity: u8, iaddress: u32, addr_size: u8, send_stop: bool) -> Result<(), ReadError> {
     if addr_size > 0 {
         begin_transmission(address);
 
@@ -96,14 +98,15 @@ pub fn iaddr_request_from(address: u8, quantity: u8, iaddress: u32, addr_size: u
 }
 
 /// Request data from the given address
-pub fn request_from(address: u8, quantity: u8, send_stop: bool) -> Result<(), ()> {
-    let clamped = quantity.min(TWI_BUFFER_LENGTH as u8);
+pub fn request_from(address: u8, quantity: u8, send_stop: bool) -> Result<(), ReadError> {
+    let clamped = (quantity as usize).min(TWI_BUFFER_LENGTH);
 
     let read = util::read_from(address, clamped, send_stop)?;
     rx_buffer.as_mut(|buf| {
-        buf.clear();
-        for byte in read {
-            buf.write(byte);
+        buf.index = 0;
+        buf.length = read.length;
+        for (i, byte) in read.enumerate() {
+            buf.inner[i] = byte;
         }
     });
 
@@ -117,7 +120,7 @@ pub fn begin_transmission(address: u8) {
     // Set address of targeted peripheral
     tx_address.write(address);
     // Reset tx_buffer
-    tx_buffer.as_mut(|buf| buf.clear());
+    tx_buffer.as_mut(|buf| buf.reset());
 }
 
 /// Originally, `end transmission` was an `fn()` function.
@@ -132,10 +135,11 @@ pub fn begin_transmission(address: u8) {
 /// no call to `end_transmission(true)` is made. Some I2C
 /// devices will behave oddly if they do not see a STOP.
 pub fn end_transmission(send_stop: bool) -> Result<(), util::WriteError> {
+    let length = tx_buffer.as_deref(|buf| buf.length);
     // Transmit buffer (blocking)
-    let ret = util::write_to(tx_address.read(), tx_buffer.read(), true, send_stop);
+    let ret = util::write_to(tx_address.read(), tx_buffer.read(), length, true, send_stop);
     // Reset tx buffer
-    tx_buffer.as_mut(|buf| buf.clear());
+    tx_buffer.as_mut(|buf| buf.reset());
     // Indicate that we are done transmitting
     transmitting.write(false);
 
@@ -143,26 +147,30 @@ pub fn end_transmission(send_stop: bool) -> Result<(), util::WriteError> {
 }
 
 /// Must be called in `peripheral tx event callback` or after `begin_transmission(address)`
-pub fn write(data: u8) -> Result<(), ()> {
+pub fn write(data: u8) -> Result<(), TransmitError> {
     if transmitting.read() {
     // In controller transmitter mode
         // Don't bother if buffer is full
-        if tx_buffer.read().is_full() {
-            return Err(());
+        if tx_buffer.as_deref(|buf| buf.length >= TWI_BUFFER_LENGTH) {
+            return Err(TransmitError::TooLarge);
         }
         // put byte in tx buffer
-        tx_buffer.as_mut(|buf| buf.write(data));
+        tx_buffer.as_mut(|buf| {
+            buf.inner[buf.index] = data;
+            buf.index += 1;
+            buf.length = buf.index;
+        });
     } else {
     // In peripheral send mode
         // Reply to controller
-        util::twi_transmit(Buffer::<1>::from_slice(&[data]));
+        util::twi_transmit(ByteBuffer::single(data), 1)?;
     }
 
     Ok(())
 }
 
 /// Must be called in `peripheral tx event callback` or after `begin_transmission(address)`
-pub fn write_all<const SIZE: usize>(data: Buffer<SIZE>) {
+pub fn write_all(data: ByteBuffer, quantity: usize) {
     if transmitting.read() {
     // In controller transmitter mode
         for byte in data {
@@ -171,7 +179,7 @@ pub fn write_all<const SIZE: usize>(data: Buffer<SIZE>) {
     } else {
     // In peripheral send mode
         // Reply to controller
-        util::twi_transmit(data);
+        util::twi_transmit(data, quantity);
     }
 }
 
@@ -179,22 +187,29 @@ pub fn write_all<const SIZE: usize>(data: Buffer<SIZE>) {
 /// 
 /// Must be called in `peripheral rx event callback` or after `request_from(address, num_bytes)`
 pub fn available() -> usize {
-    rx_buffer.read().len()
+    rx_buffer.as_deref(|buf| buf.length - buf.index)
 }
 
 /// Reads the byte at the front of the rx buffer if there is any data available;.
 pub fn read() -> Option<u8> {
-    rx_buffer.read().read()
+    rx_buffer.as_mut(|buf| {
+        if buf.index < buf.length {
+            buf.index += 1;
+            Some(buf.inner[buf.index-1])
+        } else {
+            None
+        }
+    })
 }
 
 /// Must be called in `peripheral_rx_event_callback()`
 /// or after `request_from(address, num_bytes)`
 pub fn peek() -> Option<u8> {
-    if rx_buffer.read().is_empty() {
-        return None;
+    if rx_buffer.as_deref(|buf| buf.index < buf.length) {
+        return Some(rx_buffer.as_deref(|buf| buf.inner[buf.index as usize]));
     }
 
-    Some(rx_buffer.read()[0])
+    None
 }
 
 /// `flush()` is unimplemented in the official library, 
@@ -204,21 +219,21 @@ pub fn flush() {
      // XXX: unimplemented
 }
 
-fn on_receive_service(bytes_in: Buffer<TWI_BUFFER_LENGTH>) {
+fn on_receive_service(bytes_in: ByteBuffer, num_bytes: usize) {
     // don't bother if rx buffer is in use by a controller request_from() op
     // I know this drops data, but it allows for slight supidity
     // meaning, they may not have read all the controller request_from() data yet
-    if !rx_buffer.read().is_empty() {
+    if rx_buffer.as_deref(|buf| buf.index < buf.length) {
         return;
     }
 
     if let Some(callback) = user_on_receive.read() {
         // Copy twi rx buffer into local read buffewr
         // This enables new reads to happen in parallel
-        for byte in bytes_in {
-            rx_buffer.as_mut(|buf| buf.write(byte));
+        for i in 0..num_bytes {
+            rx_buffer.as_mut(|buf| buf.inner[i] = bytes_in.inner[i]);
         }
-        callback(bytes_in.len());
+        callback(num_bytes as usize);
     }
 }
 
@@ -227,7 +242,7 @@ fn on_request_service() {
     if let Some(callback) = user_on_request.read() {
         // Reset tx buffer
         // !!! This will kill any pending pre-controller send_to() activity
-        tx_buffer.as_mut(|buf| buf.clear());
+        tx_buffer.as_mut(|buf| buf.reset());
 
         callback();
     }

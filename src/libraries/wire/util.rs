@@ -1,6 +1,7 @@
 //! Implementation of the I2C protocol via the Arduino [Wire](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire) library
 //! 
-//! Implementation and some documentation taken from the official [source code](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
+//! Implementation and most documentation taken from the official [Wire source](https://github.com/arduino/ArduinoCore-avr/tree/master/libraries/Wire/src)
+
 #![allow(non_snake_case, non_upper_case_globals, dead_code, non_camel_case_types)]
 
 use crate::registers::{ Register, TWSR, TWCR, TWBR, TWAR, TWDR };
@@ -8,16 +9,73 @@ use crate::wiring::{ digital_write, Pin };
 use crate::constants::CPU_FREQUENCY;
 use crate::prelude::delay_micros;
 use crate::volatile::Volatile;
-use crate::buffer::Buffer;
 use crate::timing::micros;
+
+/// Length of master, TX, and RX buffers.
+pub const TWI_BUFFER_LENGTH: usize = 32;
+
+/// 
+#[derive(Debug, Clone, Copy)]
+pub struct ByteBuffer {
+    /// Index of the buffer.
+    pub index: usize,
+    /// Length of the buffer.
+    pub length: usize,
+    /// Inner array containing the buffer data.
+    pub inner: [u8; TWI_BUFFER_LENGTH],
+}
+
+impl ByteBuffer {
+    /// Creates a new zeroed buffer.
+    pub const fn new() -> ByteBuffer {
+        ByteBuffer {
+            index: 0,
+            length: 0,
+            inner: [0; TWI_BUFFER_LENGTH],
+        }
+    }
+
+    /// Creates a new buffer from a single byte.
+    pub fn single(byte: u8) -> ByteBuffer {
+        let mut blank = ByteBuffer::new();
+        blank.inner[0] = byte;
+        blank
+    }
+
+    /// Resets the length and index to zero.
+    /// Effectivly clears the buffer.
+    pub fn reset(&mut self) {
+        self.index = 0;
+        self.length = 0;
+    }
+}
+
+impl Iterator for ByteBuffer {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.length {
+            // Reset for next iteration
+            self.index = 0;
+            return None;
+        }
+
+        Some(self.inner[self.index as usize])
+    }
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum State {
+    /// Ready to transmit.
     READY,
-    MRX,
-    MTX,
-    SRX,
-    STX,
+    /// Controller reciever mode.
+    CRX,
+    /// Controller transmitter mode.
+    CTX,
+    /// Peripheral reciever mode.
+    PRX,
+    /// Peripheral tramitter mode.
+    PTX,
 }
 
 const TWI_FREQ: u64 = 100_000;
@@ -27,17 +85,21 @@ const TW_READ: u8 = 1;
 /// SLA+W address
 const TW_WRITE: u8 = 0;
 
-const TW_PTATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
-/// Start contidion transmitted
+/// 
+const TW_STATUS_MASK: u8 = 0b1111_1000; // TWS7 | TWS6 | TWS5 | TWS4 | TWS3
 
-// TW_CT_xxx : Controller transmitter
-// TW_CR_xxx : Controller receiver
-// TW_PT_xxx : Peripheral transmitter
-// TW_PR_xxx : Peripheral receiver
-
+/// TWI Status Flags
+/// 
+/// `TW_CT_xxx` : Controller transmitter
+/// 
+/// `TW_CR_xxx` : Controller receiver
+///
+/// `TW_PT_xxx` : Peripheral transmitter
+///
+/// `TW_PR_xxx` : Peripheral receiver
 pub enum Flags {
     /// Start condition transmitted
-    TW_PTART = 0x08,
+    TW_START = 0x08,
     /// Repeated start condition transmitted
     TW_REP_START = 0x10,
     /// SLA+W transmitted, ACK received
@@ -48,9 +110,10 @@ pub enum Flags {
     TW_CT_DATA_ACK = 0x28,
     /// Data transmitted, NACK, received
     TW_CT_DATA_NACK = 0x30,
-    /// Arbitration lost in SLA+W/R, data, or NACK
+    /// Arbitration lost in SLA+W/R, data, or NACK.
+    /// 
     /// TW_CT_ARB_LOST and TW_CR_ARB_LOST share this flag.
-    TW_CT_MR_ARB_LOST = 0x38,
+    TW_CT_CR_ARB_LOST = 0x38,
     /// SLA+R transmitted, ACK received
     TW_CR_SLA_ACK = 0x40,
     /// RLA+R transmitted, NACK received
@@ -94,43 +157,42 @@ pub enum Flags {
 }
 
 impl Flags {
-    fn from_flag(flag: u8) -> Flags {
+    fn from_flag(flag: u8) -> Option<Flags> {
         use Flags::*;
-        crate::println!("{:X}, {}", flag & TW_PTATUS_MASK, (flag & TW_PTATUS_MASK) == 0x08);
-        match flag & TW_PTATUS_MASK {
-            0x00 => TW_BUS_ERROR,
-            0x08 => TW_PTART,
-            0x10 => TW_REP_START,
-            0x18 => TW_CT_SLA_ACK,
-            0x20 => TW_CT_SLA_NACK,
-            0x28 => TW_CT_DATA_ACK,
-            0x30 => TW_CT_DATA_NACK,
-            0x38 => TW_CT_MR_ARB_LOST,
-            0x40 => TW_CR_SLA_ACK,
-            0x48 => TW_CR_SLA_NACK,
-            0x50 => TW_CR_DATA_ACK,
-            0x58 => TW_CR_DATA_NACK,
-            0x60 => TW_PR_SLA_ACK,
-            0x68 => TW_PR_ARB_LOST_SLA_ACK,
-            0x70 => TW_PR_GCALL_ACK,
-            0x78 => TW_PR_ARB_LOST_GCALL_ACK,
-            0x80 => TW_PR_DATA_ACK,
-            0x88 => TW_PR_DATA_NACK,
-            0x90 => TW_PR_GCALL_DATA_ACK,
-            0x98 => TW_PR_GCALL_DATA_NACK,
-            0xA0 => TW_PR_STOP,
-            0xA8 => TW_PT_SLA_ACK,
-            0xB0 => TW_PT_ARB_LOST_SLA_ACK,
-            0xB8 => TW_PT_DATA_ACK,
-            0xC0 => TW_PT_DATA_NACK,
-            0xC8 => TW_PT_LAST_DATA,
-            0xF8 => TW_NO_INFO,
-            _ => {unreachable!()},
+        match flag & TW_STATUS_MASK {
+            0x00 => Some(TW_BUS_ERROR),
+            0x08 => Some(TW_START),
+            0x10 => Some(TW_REP_START),
+            0x18 => Some(TW_CT_SLA_ACK),
+            0x20 => Some(TW_CT_SLA_NACK),
+            0x28 => Some(TW_CT_DATA_ACK),
+            0x30 => Some(TW_CT_DATA_NACK),
+            0x38 => Some(TW_CT_CR_ARB_LOST),
+            0x40 => Some(TW_CR_SLA_ACK),
+            0x48 => Some(TW_CR_SLA_NACK),
+            0x50 => Some(TW_CR_DATA_ACK),
+            0x58 => Some(TW_CR_DATA_NACK),
+            0x60 => Some(TW_PR_SLA_ACK),
+            0x68 => Some(TW_PR_ARB_LOST_SLA_ACK),
+            0x70 => Some(TW_PR_GCALL_ACK),
+            0x78 => Some(TW_PR_ARB_LOST_GCALL_ACK),
+            0x80 => Some(TW_PR_DATA_ACK),
+            0x88 => Some(TW_PR_DATA_NACK),
+            0x90 => Some(TW_PR_GCALL_DATA_ACK),
+            0x98 => Some(TW_PR_GCALL_DATA_NACK),
+            0xA0 => Some(TW_PR_STOP),
+            0xA8 => Some(TW_PT_SLA_ACK),
+            0xB0 => Some(TW_PT_ARB_LOST_SLA_ACK),
+            0xB8 => Some(TW_PT_DATA_ACK),
+            0xC0 => Some(TW_PT_DATA_NACK),
+            0xC8 => Some(TW_PT_LAST_DATA),
+            0xF8 => Some(TW_NO_INFO),
+            _ => None,
         }
     }
 }
 
-pub const TWI_BUFFER_LENGTH: usize = 32;
+
 
 static twi_state: Volatile<State> = Volatile::new(State::READY);
 static twi_slarw: Volatile<u8> = Volatile::new(0);
@@ -150,12 +212,12 @@ static twi_do_reset_on_timeout: Volatile<bool> = Volatile::new(false); // reset 
 fn blank_transmit() {}
 static twi_on_peripheral_transmit: Volatile<fn()> = Volatile::new(blank_transmit);
 
-fn blank_receive(_buf: Buffer<TWI_BUFFER_LENGTH>) {}
-static twi_on_peripheral_receive: Volatile<fn(Buffer<TWI_BUFFER_LENGTH>)> = Volatile::new(blank_receive);
+fn blank_receive(_bytes: ByteBuffer, _length: usize) {}
+static twi_on_peripheral_receive: Volatile<fn(ByteBuffer, usize)> = Volatile::new(blank_receive);
 
-static twi_master_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
-static twi_tx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
-static twi_rx_buffer: Volatile<Buffer<TWI_BUFFER_LENGTH>> = Volatile::new(Buffer::new());
+static twi_master_buffer: Volatile<ByteBuffer> = Volatile::new(ByteBuffer::new());
+static twi_tx_buffer: Volatile<ByteBuffer> = Volatile::new(ByteBuffer::new());
+static twi_rx_buffer: Volatile<ByteBuffer> = Volatile::new(ByteBuffer::new());
 
 static twi_error: Volatile<u8> = Volatile::new(0xFF);
 
@@ -199,31 +261,46 @@ pub fn set_frequency(frequency: u64) {
     unsafe { TWBR::write((((CPU_FREQUENCY / frequency) - 16)/2) as u8); }
 }
 
-pub fn read_from(address: u8, length: u8, send_stop: bool) -> Result<Buffer<TWI_BUFFER_LENGTH>, ()> {
+/// Error from `read_from()`
+pub enum ReadError {
+    /// Requested length is too large to fit in the buffer.
+    TooLarge,
+    /// Request timed out.
+    Timeout,
+}
+
+pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuffer, ReadError> {
     // Ensure data will fit into buffer
     if TWI_BUFFER_LENGTH < length as usize {
-        return Err(());
+        return Err(ReadError::TooLarge);
     }
 
     let start_micros = micros();
+    while twi_state.read() != State::READY  {
+        if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
+            twi_handle_timeout(twi_do_reset_on_timeout.read());
+            return Err(ReadError::Timeout);
+        }
+    }
+    
+    twi_state.write(State::CRX);
+    twi_send_stop.write(send_stop);
+
+    twi_error.write(0xFF);
+
+    twi_master_buffer.as_mut(|buf| {
+        buf.index = 0;
+        buf.length = length-1; // This is not intuitive, read on...
+        // On receive, the previously configured ACK/NACK setting is transmitted in
+        // response to the received byte before the interrupt is signalled. 
+        // Therefore we must actually set NACK when the _next_ to last byte is
+        // received, causing that NACK to be sent in response to receiving the last
+        // expected byte of data.
+    });
+
+    twi_slarw.write(TW_READ | (address << 1));
 
     unsafe {
-        while twi_state.read() != State::READY  {
-            if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
-                twi_handle_timeout(twi_do_reset_on_timeout.read());
-                return Err(());
-            }
-        }
-
-        twi_state.write(State::MRX);
-        twi_send_stop.write(send_stop);
-
-        twi_error.write(0xFF);
-
-        twi_master_buffer.as_mut(|buf| buf.clear());
-
-        twi_slarw.write(TW_READ | (address << 1));
-
         if twi_in_rep_start.read() {
             twi_in_rep_start.write(false);
             let start_micros = micros();
@@ -232,7 +309,7 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Result<Buffer<TWI_
                 TWDR::write(twi_slarw.read());
                 if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                     twi_handle_timeout(twi_do_reset_on_timeout.read());
-                    return Err(());
+                    return Err(ReadError::Timeout);
                 }
             }
             // enable INTs, but not START
@@ -250,25 +327,27 @@ pub fn read_from(address: u8, length: u8, send_stop: bool) -> Result<Buffer<TWI_
         }
         
         let start_micros = micros();
-        while twi_state.read() == State::MRX {
+        while twi_state.read() == State::CRX {
             if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                 twi_handle_timeout(twi_do_reset_on_timeout.read());
-                return Err(());
+                return Err(ReadError::Timeout);
             }
         }
         
-        let len = twi_master_buffer.read().len().min(length as usize);
+        twi_master_buffer.as_mut(|buf| {
+            let mut data: ByteBuffer = ByteBuffer::new();
+            for i in 0..length as usize {
+                data.inner[i] = buf.inner[i];
+            }
 
-        let mut ret: Buffer<TWI_BUFFER_LENGTH> = Buffer::new();
-        for i in 0..len {
-            ret.write(twi_master_buffer.read()[i]);
-        }
-
-        Ok(ret)
+            Ok(data)
+        })
     }
 }
 
 pub enum WriteError {
+    /// The length of the data passed is larger than the TX master buffer.
+    TooLarge,
     /// Address send, NACK received
     SlaNack = 2,
     /// Data send, NACK received
@@ -279,7 +358,12 @@ pub enum WriteError {
     Timeout,
 }
 
-pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_stop: bool) -> Result<(), WriteError> {
+pub fn write_to(address: u8, data: ByteBuffer, length: usize, wait: bool, send_stop: bool) -> Result<(), WriteError> {
+    if TWI_BUFFER_LENGTH < length {
+        return Err(WriteError::TooLarge);
+    }
+
+    // Wait until TWI is ready, become controller transmitter
     let start_micros = micros();
     while twi_state.read() != State::READY {
         if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
@@ -287,17 +371,21 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
             return Err(WriteError::Timeout);
         }
     }
-
-    twi_state.write(State::MTX);
+    twi_state.write(State::CTX);
     twi_send_stop.write(send_stop);
-    // Reset error state 0xFF.. no error occured)
+    // Reset error state (0xFF.. no error occured)
     twi_error.write(0xFF);
 
-    twi_master_buffer.as_mut(|buf| buf.clear());
+    twi_master_buffer.as_mut(|buf| {
+        buf.index = 0;
+        buf.length = length;
+    });
 
-    for byte in data {
-        twi_master_buffer.as_mut(|buf| buf.write(byte));
-    }
+    twi_master_buffer.as_mut(|buf| {
+        for i in 0..length {
+            buf.inner[i] = data.inner[i];
+        } 
+    });
 
     // Build sla+w, peripheral device address + w bit
     twi_slarw.write(TW_WRITE | (address << 1));
@@ -321,13 +409,15 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
             TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() )
         }
     } else {
+        crate::println!("z");
+
         // Send start condition
         unsafe { TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() | TWSTA.bv() ); }
     }
 
     // Wait for write operation to complete
     let start_micros = micros();
-    while wait && twi_state.read() == State::MTX {
+    while wait && twi_state.read() == State::CTX {
         if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
             twi_handle_timeout(twi_do_reset_on_timeout.read());
             return Err(WriteError::Timeout);
@@ -342,34 +432,39 @@ pub fn write_to(address: u8, data: Buffer<TWI_BUFFER_LENGTH>, wait: bool, send_s
     }
 }
 
-pub enum TransmitStatus {
+/// Possible errors during transmission.
+pub enum TransmitError {
+    /// Length too long for TX buffer.
     TooLarge,
-    NotSTX,
-    Ok,
+    /// Not peripheral transmitter.
+    NotPTX,
 }
 
 /// Fills peripheral tx buffer with data.
-pub fn twi_transmit<const SIZE: usize>(data: Buffer<SIZE>) -> TransmitStatus {
+/// Must be called in peripheral TX event callback.
+pub fn twi_transmit(data: ByteBuffer, length: usize) -> Result<(), TransmitError> {
     // Ensure data will fit into buffer
-    let tx_len = twi_tx_buffer.read().len();
-    if TWI_BUFFER_LENGTH < (tx_len + data.len()) {
-        return TransmitStatus::TooLarge;
+    if TWI_BUFFER_LENGTH < twi_tx_buffer.as_deref(|buf| buf.length)+length {
+        return Err(TransmitError::TooLarge);
     }
 
     // Ensure we are currently as peripheral transmitter
-    if twi_state.read() != State::STX {
-        return TransmitStatus::NotSTX;
+    if twi_state.read() != State::PTX {
+        return Err(TransmitError::NotPTX);
     }
 
     // Copy data into tx buffer
-    for byte in data {
-        twi_tx_buffer.as_mut(|buf| buf.write(byte));
-    }
+    twi_tx_buffer.as_mut(|buf| {
+        for i in 0..length {
+            buf.inner[buf.length+i] = data.inner[i];
+        }
+        buf.length += length;
+    });
 
-    TransmitStatus::Ok
+    Ok(())
 }
 
-pub fn twi_attach_peripheral_rx_event(callback: fn(Buffer<TWI_BUFFER_LENGTH>)) {
+pub fn twi_attach_peripheral_rx_event(callback: fn(ByteBuffer, usize)) {
     twi_on_peripheral_receive.write(callback);
 }
 
@@ -453,17 +548,86 @@ pub fn twi_manage_timeout_flag(clear_flag: bool) -> bool {
 #[export_name = "__vector_24"]
 pub unsafe extern "avr-interrupt" fn TWI() {
     use Flags::*;
-    match Flags::from_flag(TWSR::read()) {
-        TW_REP_START => {
-            TWDR::write(twi_slarw.read());
-            twi_reply(true);
-        },
-        TW_CT_DATA_ACK => {
-            // If there is data to send, send it, otherwise stop
-            if let Some(data) = twi_master_buffer.as_mut(|buf| buf.read()) {
-                TWDR::write(data);
+    if let Some(status) = Flags::from_flag(TWSR::read()) {
+        // Handle fallthroughs first.
+        // Were handled with __attribute__ ((fallthrough)); in original library.
+        match status {
+            TW_CR_DATA_ACK => {// Data received, ACK sent
+                // Put byte into buffer
+                twi_master_buffer.as_mut(|buf| {
+                    buf.inner[buf.index];
+                    buf.index += 1;
+                });
+            },
+            TW_PT_SLA_ACK | TW_PT_ARB_LOST_SLA_ACK => {
+                // Enter peripheral tranmitter mode
+                twi_state.write(State::PTX);
+                // Clear the tx buffer to ready it for writes.
+                twi_tx_buffer.as_mut(|buf| buf.reset());
+                // Request for tx_buffer to be filled.
+                // Note: User must call twi_transmit() to do this.
+                twi_on_peripheral_transmit.read()();
+                // If they didn't change buffer & length, initialize it.
+                twi_tx_buffer.as_mut(|buf| {
+                    if buf.length == 0 {
+                        buf.length = 1;
+                        buf.inner[0] = 0x00;
+                    }
+                });
+            },
+            _ => {},
+        }
+
+        match status {
+            TW_START | TW_REP_START => {
+                TWDR::write(twi_slarw.read());
                 twi_reply(true);
-            } else {
+            },
+            TW_CT_SLA_ACK | TW_CT_DATA_ACK => {
+                // If there is data to send, send it, otherwise stop
+                if twi_master_buffer.as_deref(|buf| buf.index < buf.length) {
+                    twi_master_buffer.as_mut(|buf| {
+                        TWDR::write(buf.inner[buf.index]);
+                        buf.index += 1;
+                    });
+                    twi_reply(true);
+                } else {
+                    if twi_send_stop.read() {
+                        twi_stop();
+                    } else {
+                        twi_in_rep_start.write(true); // We're going send the START
+                        // Don't enable the interrupt. We'll generate the start, but we
+                        // avoid handling the interrupt until we're in the next transaction,
+                        // at the point where we would normally issue the start.
+                        use TWCR::*;
+                        TWCR::write( TWINT.bv() | TWSTA.bv() | TWEN.bv() );
+                        twi_state.write(State::READY);
+                    }
+                }
+            },
+            TW_CT_SLA_NACK => { // Address send, NACK received
+                twi_error.write(TW_CT_SLA_NACK as u8);
+                twi_stop();
+            },
+            TW_CT_DATA_NACK => { // Data send, NACK received
+                twi_error.write(TW_CT_DATA_NACK as u8);
+                twi_stop();
+            },
+            TW_CT_CR_ARB_LOST => { // Lost bus arbitration
+                twi_error.write(TW_CT_CR_ARB_LOST as u8);
+                twi_release_bus();
+            },
+
+            // Controller Receiver
+            TW_CR_DATA_ACK | TW_CR_SLA_ACK => { // Address/data sent, ACK received
+                // ACK if more bytes are expected, otherwise NACK
+                twi_reply(twi_master_buffer.as_deref(|buf| buf.index < buf.length))
+            },
+            TW_CR_DATA_NACK => { // Data received, NACK sent
+                twi_master_buffer.as_mut(|buf| {
+                    buf.inner[buf.index] = TWDR::read();
+                    buf.index += 1;
+                });
                 if twi_send_stop.read() {
                     twi_stop();
                 } else {
@@ -475,110 +639,86 @@ pub unsafe extern "avr-interrupt" fn TWI() {
                     TWCR::write( TWINT.bv() | TWSTA.bv() | TWEN.bv() );
                     twi_state.write(State::READY);
                 }
-            }
-        },
-        TW_CT_SLA_NACK => { // Address send, NACK received
-            twi_error.write(TW_CT_SLA_NACK as u8);
-            twi_stop();
-        },
-        TW_CT_DATA_NACK => { // Data send, NACK received
-            twi_error.write(TW_CT_DATA_NACK as u8);
-            twi_stop();
-        },
-        TW_CT_MR_ARB_LOST => { // Lost bus arbitration
-            twi_error.write(TW_CT_MR_ARB_LOST as u8);
-            twi_release_bus();
-        },
-
-        // Master Receiver
-        TW_CR_DATA_ACK => { // Data received, ACK sent
-            // Put byte into buffer
-            twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
-        },
-        TW_CR_SLA_ACK => { // Address sent, ACK reeceived
-            // ACK if more bytes are expected, otherwise NACK
-            twi_reply(twi_master_buffer.read().len() > 0)
-        },
-        TW_CR_DATA_NACK => { // Data received, NACK sent
-            twi_master_buffer.as_mut(|buf| buf.write(TWDR::read()));
-            if twi_send_stop.read() {
+            },
+            TW_CR_SLA_NACK => { // Address sent, NACK received
                 twi_stop();
-            } else {
-                twi_in_rep_start.write(true); // We're going send the START
-                // Don't enable the interrupt. We'll generate the start, but we
-                // avoid handling the interrupt until we're in the next transaction,
-                // at the point where we would normally issue the start.
-                use TWCR::*;
-                TWCR::write( TWINT.bv() | TWSTA.bv() | TWEN.bv() );
-                twi_state.write(State::READY);
-            }
-        },
-        TW_CR_SLA_NACK => { // Address sent, NACK received
-            twi_stop();
-        },
-        // TW_CR_ARB_LOST handled by TW_CT_ARB_LOST arm
+            },
+            // TW_CR_ARB_LOST handled by TW_CT_ARB_LOST arm
 
-        // Slave Receiver
-        TW_PR_ARB_LOST_GCALL_ACK => { // Lost arbitration, returned ACK
-            // Enter peripheral receiver mode
-            twi_state.write(State::SRX);
-            //Indicate that rx buffer can be overwritten and ACK
-            twi_rx_buffer.as_mut(|buf| buf.clear());
-            twi_reply(true);
-        },
-        TW_PR_GCALL_DATA_ACK => { // Data received generallty, returned ACK
-            // If there is still room in the rx buffer
-            if !twi_rx_buffer.read().is_full() {
-                // Put byte in buffer and ACK
-                twi_rx_buffer.as_mut(|buf| buf.write(TWDR::read()));
+            // Peripheral Receiver
+            TW_PR_SLA_ACK | TW_PR_GCALL_ACK | TW_PR_ARB_LOST_SLA_ACK | TW_PR_ARB_LOST_GCALL_ACK => {
+                // Enter peripheral receiver mode
+                twi_state.write(State::PRX);
+                //Indicate that rx buffer can be overwritten and ACK
+                twi_rx_buffer.as_mut(|buf| buf.reset());
                 twi_reply(true);
-            } else {
-                // otherwise NACK
+            },
+            TW_PR_DATA_ACK | TW_PR_GCALL_DATA_ACK => { // Data received generallty, returned ACK
+                // If there is still room in the rx buffer
+                let available = twi_rx_buffer.as_mut(|buf| {
+                    let available = buf.index < TWI_BUFFER_LENGTH;
+                    if available {
+                        buf.inner[buf.index] = TWDR::read();
+                    }
+                    available
+                });
+                twi_reply(available);
+            },
+            TW_PR_STOP => { // Stop or repeated start condition received
+                // ACK future responses and leave peripheral receiver state
+                twi_release_bus();
+                //Put a null char after data if there's room
+                twi_rx_buffer.as_mut(|buf| {
+                    if buf.index < TWI_BUFFER_LENGTH {
+                        buf.inner[buf.index] = 0x00;
+                    }
+                    // Callback to user defined callback.
+                    twi_on_peripheral_receive.read()(buf.clone(), buf.index);
+                    // Since we submit rx buffer to Wire we can reset it.
+                    buf.index = 0;
+                });
+            },
+            TW_PR_DATA_NACK | TW_PR_GCALL_DATA_NACK => { // Data received generally, returned NACK
                 twi_reply(false);
-            }
-        },
-        TW_PR_STOP => { // Stop or repeated start condition received
-            // ACK future responses and leave peripheral receiver state
-            twi_release_bus();
-            //Put a null char after data if there's room
-            twi_rx_buffer.as_mut(|buf| buf.write('\0' as u8));
-            // Callback to the user defined callback
-            twi_on_peripheral_receive.read()(twi_rx_buffer.read());
-            // Since we submit rx buffer to "wire" library, we can reset it
-            twi_rx_buffer.as_mut(|buf| buf.clear());
-        },
-        TW_PR_GCALL_DATA_NACK => { // Data received generally, returned NACK
-            twi_reply(false);
-        },
+            },
 
-        // Slave Transmitter
-        TW_PT_ARB_LOST_SLA_ACK => { // Arbitration lost, returned ACK
-            // Enter peripheral transmitter mode
-            twi_state.write(State::STX);
-            // Ready the tx buffer for iteration
-            twi_tx_buffer.as_mut(|buf| buf.clear());
-            // Request for tx buffer to be filled
-            // Note: User must call twi_transmit(bytes) to do this
-            twi_on_peripheral_transmit.read()();
-        },
-        TW_PT_DATA_ACK => { // Byte sent, ACK returned
-            // Copy data to output register
-            if let Some(byte) = twi_tx_buffer.as_mut(|buf| buf.read()) {
-                TWDR::write(byte);
+            // Peripheral Transmitter
+            TW_PT_SLA_ACK | TW_PT_ARB_LOST_SLA_ACK => { // Arbitration lost, returned ACK
+                // Enter peripheral transmitter mode
+                twi_state.write(State::PTX);
+                // Ready the tx buffer for iteration
+                twi_tx_buffer.as_mut(|buf| buf.reset());
+                // Request for tx buffer to be filled
+                // Note: User must call twi_transmit(bytes, length) to do this
+                twi_on_peripheral_transmit.read()();
+                // If they didn't change buffer & length, initialize it.
+                twi_tx_buffer.as_mut(|buf| {
+                    if buf.length == 0 {
+                        buf.length = 1;
+                        buf.inner[0] = 0x00;
+                    }
+                });
+            },
+            TW_PT_DATA_ACK => { // Byte sent, ACK returned
+                twi_tx_buffer.as_mut(|buf| {
+                    // Copy data to output register
+                    TWDR::write(buf.inner[buf.index]);
+                    buf.index += 1;
+                    //If there is more to send, ACK, otherwise NACK
+                    twi_reply(buf.index < buf.length);
+                });
+            },
+            TW_PT_DATA_NACK | TW_PT_LAST_DATA => { // Recieved NACK indicating that we are done, or ACK after we are done.
+                // ACK future responses
+                twi_reply(true);
+                // Leave peripheral receiver state
+                twi_state.write(State::READY);
+            },
+            TW_BUS_ERROR => {
+                twi_error.write(TW_BUS_ERROR as u8);
+                twi_stop();
             }
-            //If there is more to send, ACK, otherwise NACK
-            twi_reply(!twi_tx_buffer.read().is_empty());
-        },
-        TW_PT_LAST_DATA => { // Received ACK, but we are done already!
-            // ACK future responses
-            twi_reply(true);
-            // Leave peripheral receiver state
-            twi_state.write(State::READY);
-        },
-        TW_BUS_ERROR => {
-            twi_error.write(TW_BUS_ERROR as u8);
-            twi_stop();
+            _ => {}
         }
-        _ => {}
     }
 }
