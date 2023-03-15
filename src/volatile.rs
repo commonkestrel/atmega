@@ -40,6 +40,8 @@ impl<T: Copy> Volatile<T> {
         self.0.into_inner()
     }
 
+    /// Passes the data of type `T` and passes it into the given function as `&T`.
+    /// Allows for reading of inner data without copying or cloning the inner data to a new area in memory.
     pub fn as_deref<F, R>(&self, mut operation: F) -> R
     where F: FnMut(&T) -> R
     {
