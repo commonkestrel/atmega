@@ -23,7 +23,7 @@ struct Chunk {
 }
 
 impl FreeList {
-    pub fn empty() -> FreeList {
+    pub const fn empty() -> FreeList {
         FreeList {
             first: Chunk {size: 0, next: None},
             bottom: null_mut(),
@@ -32,8 +32,7 @@ impl FreeList {
     }
 
     pub fn new(bottom: *mut u8, top: *mut u8) -> FreeList {
-        todo!(
-        // FreeList { bottom, top, next: None }
+        FreeList { bottom, top, first: Chunk {size: 0, next: None} }
     }
 }
 
