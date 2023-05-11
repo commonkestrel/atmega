@@ -20,7 +20,7 @@ Assuming you have nothing installed, run the following commands:
 cargo install cargo-generate
 cargo generate --git https://github.com/commonkestrel/atmega-template --name $PROJECT_NAME
 cd $PROJECT_NAME
-cargo override set nightly
+rustup override set nightly
 rustup component add rust-src
 cargo install ravedude
 ```
