@@ -62,7 +62,7 @@ impl Serial {
 
     /// Checks if the USART is ready to transmit the next byte.
     pub fn _transmit_ready() -> bool {
-        unsafe { UCSR0A::UDRE0.read_bit() }
+        unsafe { UCSR0A::UDRE0.is_set() }
     }
 
     /// Transmits byte over serial.
@@ -76,7 +76,7 @@ impl Serial {
     #[cfg(any(not(feature = "serial-buffer"), doc))]
     #[doc(cfg(not(feature = "serial-buffer")))]
     pub fn recieve_ready() -> bool {
-        unsafe { UCSR0A::RXC0.read_bit() }
+        unsafe { UCSR0A::RXC0.is_set() }
     }
 
     /// Waits for a byte to be recieved over serial.

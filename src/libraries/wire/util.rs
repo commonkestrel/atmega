@@ -317,7 +317,7 @@ pub fn read_from(address: u8, length: usize, send_stop: bool) -> Result<ByteBuff
             let start_micros = micros();
             let timeout_us = twi_timeout_us.read();
 
-            while TWCR::TWWC.read_bit() {
+            while TWCR::TWWC.is_set() {
                 TWDR::write(twi_slarw.read());
                 if timeout_us > 0 && (micros() - start_micros) > timeout_us as u64 {
                     twi_handle_timeout(twi_do_reset_on_timeout.read());
@@ -411,7 +411,7 @@ pub fn write_to(address: u8, data: ByteBuffer, length: usize, wait: bool, send_s
         
         let start_micros = micros();
         unsafe {
-            while TWCR::TWWC.read_bit() {
+            while TWCR::TWWC.is_set() {
                 TWDR::write(twi_slarw.read());
                 if twi_timeout_us.read() > 0 && (micros() - start_micros) > twi_timeout_us.read() as u64 {
                     twi_handle_timeout(twi_do_reset_on_timeout.read());
@@ -422,8 +422,6 @@ pub fn write_to(address: u8, data: ByteBuffer, length: usize, wait: bool, send_s
             TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() )
         }
     } else {
-        crate::println!("z");
-
         // Send start condition
         unsafe { TWCR::write( TWINT.bv() | TWEA.bv() | TWEN.bv() | TWIE.bv() | TWSTA.bv() ); }
     }
@@ -504,7 +502,7 @@ pub fn twi_stop() {
     // We can't use micros() from an ISR, since micros relies on interrutps, so approximate the timeout with cycle-counted delays
     const US_PER_LOOP: u32 = 8;
     let mut counter = (twi_timeout_us.read() + US_PER_LOOP - 1) / US_PER_LOOP; // Round up
-    while unsafe { TWCR::TWSTO.read_bit() } {
+    while unsafe { TWCR::TWSTO.is_set() } {
         if twi_timeout_us.read() > 0 {
             if counter > 0 {
                 delay_micros(US_PER_LOOP as u64);

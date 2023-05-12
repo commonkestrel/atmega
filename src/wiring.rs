@@ -423,7 +423,7 @@ pub fn analog_read(pin: Pin) -> u16 {
         ADCSRA::ADSC.set();
 
         // ADSC is automatically zeroed when the conversion finishes
-        while ADCSRA::ADSC.read_bit() {}
+        while ADCSRA::ADSC.is_set() {}
 
         // Sets the presentation so that the lower 8 bits are stored in ADCL
         ADMUX::ADLAR.clear();

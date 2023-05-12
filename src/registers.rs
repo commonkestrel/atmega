@@ -5,6 +5,15 @@
 
 use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 
+/// The bit value of the passed value.
+/// Expands to `1 << val`.
+#[macro_export]
+macro_rules! bv {
+    ($reg: expr) => {
+        1 << ($reg as u8)
+    }
+}
+
 /// Generic utilies for interacting with registers, like reading, writing, operating, etc...
 /// Meant to be applied to an `enum` with the varients used for individual bits for generating a bit mask
 pub trait Register: Sized + Clone + Copy + Into<u8>
@@ -45,8 +54,13 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
 
     #[inline(always)]
-    unsafe fn read_bit(&self) -> bool {
+    unsafe fn is_set(&self) -> bool {
         0 < Self::read() & (1 << self.bit())
+    }
+
+    #[inline(always)]
+    unsafe fn is_clear(&self) -> bool {
+        0 == Self::read() & (1 << self.bit())
     }
 
     #[inline(always)]
@@ -83,7 +97,7 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
 /// 
 /// Syntax: `register!(<type>[<address>],);`
 macro_rules! register {
-    ($($t:ty[$addr:expr],)*) => {
+    ($($t:ty[$addr:expr]$(,)?)*) => {
         $(
             impl Into<u8> for $t {
                 fn into(self) -> u8 {
@@ -838,9 +852,9 @@ impl<B: Register, C: Register, D: Register> PinReg<B, C, D> {
 
     pub unsafe fn read(&self) -> bool {
         match self {
-            Self::B(bit) => bit.read_bit(),
-            Self::C(bit) => bit.read_bit(),
-            Self::D(bit) => bit.read_bit(),
+            Self::B(bit) => bit.is_set(),
+            Self::C(bit) => bit.is_set(),
+            Self::D(bit) => bit.is_set(),
         }
     }
 

@@ -127,5 +127,5 @@ pub unsafe fn restore(Status(sreg): Status) {
 /// Checks if global interrupts are enabled
 pub fn enabled() -> bool {
     // Reads the Global Interrupt Enable bit in the AVR Status Register
-    unsafe { SREG::I.read_bit() }
+    unsafe { SREG::I.is_set() }
 }
