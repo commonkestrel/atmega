@@ -54,13 +54,9 @@ impl DateTime {
         let days = (hours/24) as usize;
         let weekday = (days + 4) % 7; // Unix epoch is a thursday
 
-        crate::prelude::println!("{}", days);
-
         let year = (((days as u64 * 4) / 1461) + 1970) as usize; // days/325.25 + 1970: Accounts for leap years and the fact that Unix time starts at 1970.
         let is_leap_year = leap_year(year);
-        
-        crate::prelude::println!("{}, {}", days*4, (days*4)/1461);
-        
+                
         let leap_days = leap_years_between(1970, year as usize);
         let doy = (days - ((year-1970)*365)) - leap_days;
 
