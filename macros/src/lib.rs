@@ -1,9 +1,9 @@
 // Partialy adapted from https://github.com/rust-embedded/cortex-m-rt/blob/master/macros/src/lib.rs
 
-use darling::{FromMeta, FromDeriveInput};
+use darling::{ FromMeta, FromDeriveInput };
 use proc_macro::TokenStream;
-use proc_macro2::{Span, Ident};
-use syn::{LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub, parse::Parse};
+use proc_macro2::{ Span, Ident };
+use syn::{ LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub };
 
 #[repr(u8)]
 #[allow(non_camel_case_types)]
