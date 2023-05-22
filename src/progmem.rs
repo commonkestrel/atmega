@@ -166,7 +166,7 @@ impl<T: Sized> ProgMem<T> {
     /// 
     pub fn read_byte(&self, offset: usize) -> u8 {
         // Make sure the memory is within the stored variable.
-        assert!(size_of::<T>() < offset);
+        assert!(size_of::<T>() > offset);
 
         unsafe {
             let addr = self.0.offset(offset as isize);
