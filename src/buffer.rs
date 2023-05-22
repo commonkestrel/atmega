@@ -130,3 +130,18 @@ impl<T: Copy, const SIZE: usize> Iterator for Buffer<T, SIZE> {
         self.read()
     }
 }
+
+/// Creates a buffer and writes the provided data.
+/// Equivalent to the [`std::vec!`] macro for [`std::vec::Vec`].
+/// 
+/// Will ignore values if there are more passed than the buffer's max length.
+#[macro_export]
+macro_rules! buf {
+    ($($arg:expr)*) => {{
+        let buf = Buffer::new();
+        $(
+            buf.write($arg);
+        )*
+        buf
+    }};
+}
