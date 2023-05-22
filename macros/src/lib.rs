@@ -1,8 +1,9 @@
 // Partialy adapted from https://github.com/rust-embedded/cortex-m-rt/blob/master/macros/src/lib.rs
 
+use darling::{FromMeta, FromDeriveInput};
 use proc_macro::TokenStream;
 use proc_macro2::{Span, Ident};
-use syn::{LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub};
+use syn::{LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub, parse::Parse};
 
 #[repr(u8)]
 #[allow(non_camel_case_types)]
@@ -101,7 +102,7 @@ impl Interrupt {
 /// [`atmega::interrupts::Interrupt`]: enum@crate::interrupts::Interrupt
 #[proc_macro_attribute]
 pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be called on a function");
+    let mut f: syn::ItemFn = syn::parse(item).expect("'#[interrupt]' must be used on a function");
     let fnspan = f.span();
 
     if !attr.is_empty() {
@@ -153,4 +154,171 @@ pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[export_name = #vector]
         #f
     ).into()
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Size {
+    Byte,
+    Short,
+    Int,
+    Long,
+    Giant,
+}
+
+impl Into<proc_macro2::TokenStream> for Size {
+    fn into(self) -> proc_macro2::TokenStream {
+        use Size::*;
+        match self {
+            Byte => quote::quote!{u8},
+            Short => quote::quote!{u16},
+            Int => quote::quote!{u32},
+            Long => quote::quote!{u64},
+            Giant => quote::quote!{u128},
+        }
+    }
+}
+
+impl FromMeta for Size {
+    fn from_value(value: &syn::Lit) -> darling::Result<Self> {
+        match value {
+            syn::Lit::Int(ref i) => {
+                return match i.base10_digits() {
+                    "8" => Ok(Size::Byte),
+                    "16" => Ok(Size::Short),
+                    "32" => Ok(Size::Int),
+                    "64" => Ok(Size::Long),
+                    "128" => Ok(Size::Giant),
+                    _ => Err(darling::Error::custom("unsupported register size. supported sizes are: 8, 16, 32, 64, 128.")),
+                }
+            },
+            syn::Lit::Str(ref s) => {
+                return match s.value().as_str() {
+                    "8"|"u8" => Ok(Size::Byte),
+                    "16"|"u16" => Ok(Size::Short),
+                    "32"|"u32" => Ok(Size::Int),
+                    "64"|"u64" => Ok(Size::Long),
+                    "128"|"u128" => Ok(Size::Giant),
+                    _ => Err(darling::Error::custom(r#"unsupported register size. supported sizes are: "8", "16", "32", "64", "128"."#)),
+                }
+            }
+            _ => {
+                Err(darling::Error::unexpected_lit_type(value))
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, darling::FromDeriveInput)]
+#[darling(supports(enum_unit), attributes(register), forward_attrs(bitwise, size, addr, read, write))]
+struct RegisterAttr {
+    bitwise: Option<bool>,
+    size: Size,
+    addr: Option<u16>,
+    read: Option<u16>,
+    write: Option<u16>,
+    
+}
+
+#[proc_macro_derive(Register, attributes(register))]
+pub fn derive_register(item: TokenStream) -> TokenStream {
+    let input: syn::DeriveInput = syn::parse(item).expect("invalid derive input");
+    let ident = &input.ident;
+    let mut attributes = RegisterAttr::from_derive_input(&input).expect("unable to parse attributes");
+
+    if let Some(addr) = attributes.addr {
+        attributes.read = Some(addr);
+        attributes.write = Some(addr);
+    }
+
+    let read_addr = match attributes.write {
+        Some(addr) => addr,
+        None => return syn::Error::new(input.ident.span(), "read address not defined").to_compile_error().into(),
+    };
+    let write_addr = match attributes.write {
+        Some(addr) => addr,
+        None => return syn::Error::new(input.ident.span(), "write address not defined").to_compile_error().into(),
+    };
+    let register_type: proc_macro2::TokenStream = attributes.size.into();
+
+    let bitwise = if attributes.bitwise.unwrap_or(true) {
+        quote::quote!{
+            impl ops::BitAnd<#register_type> for #ident {
+                type Output = #register_type;
+                fn bitand(self, rhs: #register_type) -> Self::Output {
+                    unsafe { Self::read() & rhs }
+                }
+            }
+            impl ops::BitAndAssign<#register_type> for #ident {
+                fn bitand_assign(&mut self, rhs: #register_type) {
+                    unsafe { Self::operate(|val| val & rhs); }
+                }
+            }
+            impl ops::BitOr<#register_type> for #ident {
+                type Output = #register_type;
+                fn bitor(self, rhs: #register_type) -> Self::Output {
+                    unsafe { Self::read() | rhs }
+                }
+            }
+            impl ops::BitOrAssign<#register_type> for #ident {
+                fn bitor_assign(&mut self, rhs: #register_type) {
+                    unsafe { Self::operate(|val| val | rhs) }
+                }
+            }
+            impl ops::BitXor<#register_type> for #ident {
+                type Output = #register_type;
+                fn bitxor(self, rhs: #register_type) -> Self::Output {
+                    unsafe { Self::read() ^ rhs }
+                }
+            }
+            impl ops::BitXorAssign<#register_type> for #ident {
+                fn bitxor_assign(&mut self, rhs: #register_type) {
+                    unsafe { Self::operate(|val| val ^ rhs) }
+                }
+            }
+            impl cmp::PartialEq<#register_type> for #ident {
+                fn eq(&self, other: &#register_type) -> bool {
+                    unsafe { Self::read() == *other }
+                }
+            }
+            impl cmp::PartialOrd<#register_type> for #ident {
+                fn ge(&self, other: &#register_type) -> bool {
+                    let val = unsafe { Self::read() };
+                    val >= *other
+                }
+                fn gt(&self, other: &#register_type) -> bool {
+                    let val = unsafe { Self::read() };
+                    val > *other
+                }
+                fn le(&self, other: &#register_type) -> bool {
+                    let val = unsafe { Self::read() };
+                    val <= *other
+                }
+                fn lt(&self, other: &#register_type) -> bool {
+                    let val = unsafe { Self::read() };
+                    val < *other
+                }
+                fn partial_cmp(&self, other: &#register_type) -> Option<cmp::Ordering> {
+                    let val = unsafe { Self::read() };
+                    Some(val.cmp(other))
+                }
+            }
+        }
+    } else {
+        quote::quote!{}
+    };
+
+    quote::quote!{
+        impl Into<#register_type> for #ident {
+            fn into(self) -> #register_type {
+                self as #register_type
+            }
+        }
+
+        impl Register<#register_type> for #ident {
+            const READ:  *mut #register_type = #read_addr as *mut #register_type;
+            const WRITE: *mut #register_type = #write_addr as *mut #register_type;
+        }
+        
+        #bitwise
+    }.into()
 }
