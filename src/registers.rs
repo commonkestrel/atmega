@@ -734,6 +734,13 @@ pub enum TWAR {
     TWA6  = 7,
 }
 
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x1D, write=0x3D, size=8)]
+pub enum EIMSK {
+    INT0 = 0,
+    INT1 = 1,
+}
+
 /// Port B maps to pins `D13`-`D8`,
 /// Port C maps to pins `A6`-`A0`,
 /// Port D maps to pins `D7`-`D0`
