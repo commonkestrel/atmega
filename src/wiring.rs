@@ -144,12 +144,10 @@ impl Timer {
                 TIMER0A => { OCR0A::write(value); },
                 TIMER0B => { OCR0B::write(value); },
                 TIMER1A => {
-                    OCR1AH::write(0);
-                    OCR1AL::write(value);
+                    OCR1A::write(value.into());
                 },
                 TIMER1B => {
-                    OCR1BH::write(0);
-                    OCR1BL::write(value);
+                    OCR1B::write(value.into());
                 }
                 TIMER2A => { OCR2A::write(value); },
                 TIMER2B => { OCR2B::write(value); },
@@ -428,16 +426,12 @@ pub fn analog_read(pin: Pin) -> u16 {
         // Sets the presentation so that the lower 8 bits are stored in ADCL
         ADMUX::ADLAR.clear();
         
-        let low_bits = ADCL::read();
-        let high_bits = ADCH::read();
-
-        // Conbines low and high bits into single u16
-        (low_bits as u16) | (high_bits as u16)
+        ADC::read()
     }
 }
 
 /// Sets the given PWM pin to the given value between 0-255.
-/// If the given pin does not have PWM this will call `digital_write` instead.
+/// If the given pin does not have PWM this will call [`digital_write`] instead.
 pub fn analog_write(pin: Pin, value: u8) {
     pin_mode(pin, PinMode::OUTPUT);
     if value == 0 {
