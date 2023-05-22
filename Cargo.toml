@@ -30,7 +30,7 @@ opt-level = "z"
 panic = "abort"
 
 [dependencies]
-atmega_macros = { path = "./macros", optional = true }
+atmega_macros = { path = "./macros" }
 
 [features]
 default = ["millis"]
