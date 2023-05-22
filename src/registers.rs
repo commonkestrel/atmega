@@ -5,77 +5,117 @@
 
 use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 
+use atmega_macros::Register;
+
 /// The bit value of the passed value.
 /// Expands to `1 << val`.
 #[macro_export]
 macro_rules! bv {
     ($reg: expr) => {
-        1 << ($reg as u8)
+        1 << ($reg as ($reg as $crate::registers::Register)::SIZE)
     }
+}
+
+/// Quick trait to allow for using zero and one in a generic way.
+/// ONLY used in `Register`.
+pub trait Integer: Sized + Clone + Copy + Into<Self> + Default
+            + ops::BitAnd<Self, Output=Self>
+            + ops::BitAndAssign<Self>
+            + ops::BitOr<Self, Output = Self>
+            + ops::BitOrAssign<Self>
+            + ops::BitXor<Self, Output = Self>
+            + ops::BitXorAssign<Self>
+            + ops::Shl<Self, Output = Self>
+            + ops::Shr<Self, Output = Self>
+            + ops::Not<Output = Self>
+            + cmp::PartialEq<Self>
+            + cmp::PartialOrd<Self>
+{
+    const ZERO: Self;
+    const ONE:  Self;
+}
+
+impl Integer for u8 {
+    const ZERO: u8 = 0;
+    const ONE:  u8 = 1;
+}
+
+impl Integer for u16 {
+    const ZERO: u16 = 0;
+    const ONE:  u16 = 1;
+}
+
+impl Integer for u32 {
+    const ZERO: u32 = 0;
+    const ONE:  u32 = 1;
+}
+
+impl Integer for u64 {
+    const ZERO: u64 = 0;
+    const ONE:  u64 = 1;
+}
+
+impl Integer for u128 {
+    const ZERO: u128 = 0;
+    const ONE:  u128 = 1;
 }
 
 /// Generic utilies for interacting with registers, like reading, writing, operating, etc...
 /// Meant to be applied to an `enum` with the varients used for individual bits for generating a bit mask
-pub trait Register: Sized + Clone + Copy + Into<u8>
-                    + ops::BitAnd<u8, Output=u8>
-                    + ops::BitAndAssign<u8>
-                    + ops::BitOr<u8, Output = u8>
-                    + ops::BitOrAssign<u8>
-                    + ops::BitXor<u8, Output = u8>
-                    + ops::BitXorAssign<u8>
-                    + cmp::PartialEq<u8>
-                    + cmp::PartialOrd<u8>
- {
-    const ADDR: *mut u8;
+pub trait Register<SIZE>: Sized + Clone + Copy + Into<SIZE>
+where SIZE: Integer
+{
+    const READ: *mut SIZE;
+    const WRITE: *mut SIZE;
 
     #[inline(always)]
-    unsafe fn read() -> u8 {
-        read_volatile(Self::ADDR)
+    unsafe fn read() -> SIZE {
+        read_volatile(Self::READ)
     }
 
     #[inline(always)]
-    unsafe fn write(value: u8) {
-        write_volatile(Self::ADDR, value) 
+    unsafe fn write(value: SIZE) {
+        write_volatile(Self::WRITE, value) 
     }
     
     #[inline(always)]
-    unsafe fn operate<F: Fn(u8) -> u8>(operator: F) {
+    unsafe fn operate<F: Fn(SIZE) -> SIZE>(operator: F) {
         Self::write(operator(Self::read()))
     }
 
     #[inline(always)]
-    fn bit(&self) -> u8 {
-        Into::<u8>::into(*self)
+    fn bit(&self) -> SIZE {
+        Into::<SIZE>::into(*self)
     }
 
     #[inline(always)]
-    fn bv(&self) -> u8 {
-        1 << self.bit()
+    fn bv(&self) -> SIZE {
+        SIZE::ONE << self.bit()
     }
 
     #[inline(always)]
     unsafe fn is_set(&self) -> bool {
-        0 < Self::read() & (1 << self.bit())
+        SIZE::default() < Self::read() & (SIZE::ONE << self.bit())
     }
 
     #[inline(always)]
     unsafe fn is_clear(&self) -> bool {
-        0 == Self::read() & (1 << self.bit())
+        SIZE::ONE == Self::read() & (SIZE::ONE << self.bit())
     }
 
     #[inline(always)]
     unsafe fn set(&self) {
-        Self::write(Self::read() | (1 << self.bit()))
+        Self::write(Self::read() | (SIZE::ONE << self.bit()))
     }
 
     #[inline(always)]
     unsafe fn clear(&self) {
-        Self::write(Self::read() & !(1 << self.bit()))
+        Self::write(Self::read() & !(SIZE::ONE << self.bit()))
     }
 
     #[inline(always)]
     unsafe fn toggle(&self) {
-        Self::write(Self::read() ^ (1 << self.bit()))
+        Self::write(Self::read() ^ (SIZE::ONE << self.bit()))
     }
 
     #[inline(always)]
@@ -88,92 +128,14 @@ pub trait Register: Sized + Clone + Copy + Into<u8>
     }
 
     #[inline(always)]
-    unsafe fn until<F: Fn(u8) -> bool>(check: F) {
+    unsafe fn until<F: Fn(SIZE) -> bool>(check: F) {
         while !check(Self::read()) {}
     }
 }
 
-/// Implement traits needed for a type, usually an `enum`, to implement `Register`.
-/// 
-/// Syntax: `register!(<type>[<address>],);`
-macro_rules! register {
-    ($($t:ty[$addr:expr]$(,)?)*) => {
-        $(
-            impl Into<u8> for $t {
-                fn into(self) -> u8 {
-                    self as u8
-                }
-            }
-            impl ops::BitAnd<u8> for $t {
-                type Output = u8;
-                fn bitand(self, rhs: u8) -> Self::Output {
-                    unsafe { Self::read() & rhs }
-                }
-            }
-            impl ops::BitAndAssign<u8> for $t {
-                fn bitand_assign(&mut self, rhs: u8) {
-                    unsafe { Self::operate(|val| val & rhs); }
-                }
-            }
-            impl ops::BitOr<u8> for $t {
-                type Output = u8;
-                fn bitor(self, rhs: u8) -> Self::Output {
-                    unsafe { Self::read() | rhs }
-                }
-            }
-            impl ops::BitOrAssign<u8> for $t {
-                fn bitor_assign(&mut self, rhs: u8) {
-                    unsafe { Self::operate(|val| val | rhs) }
-                }
-            }
-            impl ops::BitXor<u8> for $t {
-                type Output = u8;
-                fn bitxor(self, rhs: u8) -> Self::Output {
-                    unsafe { Self::read() ^ rhs }
-                }
-            }
-            impl ops::BitXorAssign<u8> for $t {
-                fn bitxor_assign(&mut self, rhs: u8) {
-                    unsafe { Self::operate(|val| val ^ rhs) }
-                }
-            }
-            impl cmp::PartialEq<u8> for $t {
-                fn eq(&self, other: &u8) -> bool {
-                    unsafe { Self::read() == *other }
-                }
-            }
-            impl cmp::PartialOrd<u8> for $t {
-                fn ge(&self, other: &u8) -> bool {
-                    let val = unsafe { Self::read() };
-                    val >= *other
-                }
-                fn gt(&self, other: &u8) -> bool {
-                    let val = unsafe { Self::read() };
-                    val > *other
-                }
-                fn le(&self, other: &u8) -> bool {
-                    let val = unsafe { Self::read() };
-                    val <= *other
-                }
-                fn lt(&self, other: &u8) -> bool {
-                    let val = unsafe { Self::read() };
-                    val < *other
-                }
-                fn partial_cmp(&self, other: &u8) -> Option<cmp::Ordering> {
-                    let val = unsafe { Self::read() };
-                    Some(val.cmp(other))
-                }
-            }
-            impl Register for $t {
-                const ADDR: *mut u8 = $addr as *mut u8;
-            }
-            
-        )*
-    };
-}
-
 /// AVR Status Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x3F, write=0x5F, size=8)]
 pub enum SREG {
     C = 0,
     Z = 1,
@@ -186,7 +148,8 @@ pub enum SREG {
 }
 
 /// ADC Control and Status Register A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x7A, size=8)]
 pub enum ADCSRA {
     ADPS0 = 0,
     ADPS1 = 1,
@@ -199,7 +162,8 @@ pub enum ADCSRA {
 }
 
 /// ADC Control and Status Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x7B, size=8)]
 pub enum ADCSRB {
     ADTS0 = 0,
     ADTS1 = 1,
@@ -208,7 +172,8 @@ pub enum ADCSRB {
 }
 
 /// ADC Multiplexer Selection Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x7C, size=8)]
 pub enum ADMUX {
     MUX0  = 0,
     MUX1  = 1,
@@ -220,7 +185,8 @@ pub enum ADMUX {
 }
 
 /// Port B Input Pins Address
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x03, write=0x23, size=8)]
 pub enum PINB {
     PINB0 = 0,
     PINB1 = 1,
@@ -233,7 +199,8 @@ pub enum PINB {
 }
 
 /// Port B Data Direction Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x04, write=0x24, size=8)]
 pub enum DDRB {
     DDRB0 = 0,
     DDRB1 = 1,
@@ -246,7 +213,8 @@ pub enum DDRB {
 }
 
 /// Port B Data Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x05, write=0x25, size=8)]
 pub enum PORTB {
     PORTB0 = 0,
     PORTB1 = 1,
@@ -259,7 +227,8 @@ pub enum PORTB {
 }
 
 /// Port C Input Pins Address
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x08, write=0x28, size=8)]
 pub enum PINC {
     PINC0 = 0,
     PINC1 = 1,
@@ -271,7 +240,8 @@ pub enum PINC {
 }
 
 /// Port C Data Direction Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x07, write=0x27, size=8)]
 pub enum DDRC {
     DDRC0 = 0,
     DDRC1 = 1,
@@ -283,7 +253,8 @@ pub enum DDRC {
 }
 
 /// Port C Data Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x06, write=0x26, size=8)]
 pub enum PORTC {
     PORTC0 = 0,
     PORTC1 = 1,
@@ -295,7 +266,8 @@ pub enum PORTC {
 }
 
 /// Port D Input Pins Address
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x09, write=0x29, size=8)]
 pub enum PIND {
     PIND0 = 0,
     PIND1 = 1,
@@ -308,7 +280,8 @@ pub enum PIND {
 }
 
 /// Port D Data Direction Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x0A, write=0x2A, size=8)]
 pub enum DDRD {
     DDRD0 = 0,
     DDRD1 = 1,
@@ -321,7 +294,8 @@ pub enum DDRD {
 }
 
 /// Port D Data Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x0B, write=0x2B, size=8)]
 pub enum PORTD {
     PORTD0 = 0,
     PORTD1 = 1,
@@ -334,7 +308,8 @@ pub enum PORTD {
 }
 
 /// MCU Control Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x35, write=0x55, size=8)]
 pub enum MCUCR {
     IVCE  = 0,
     IVSEL = 1,
@@ -344,7 +319,8 @@ pub enum MCUCR {
 }
 
 /// Power Reduction Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x64, size=8)]
 pub enum PRR {
     PRADC    = 0,
     PRUSART0 = 1,
@@ -356,15 +332,17 @@ pub enum PRR {
 }
 
 /// General TC Control Register
-#[derive(Clone, Copy)]
-pub enum GRCCR {
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x23, write=0x43, size=8)]
+pub enum GTCCR {
     PSRSYNC = 0,
     PSRASY  = 1,
     TSM     = 7,
 }
 
 /// TC0 Interrupt Flag Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x15, write=0x35, size=8)]
 pub enum TIFR0 {
     TOV0  = 0,
     OCF0A = 1,
@@ -372,7 +350,8 @@ pub enum TIFR0 {
 }
 
 /// TC0 Control Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x24, write=0x44, size=8)]
 pub enum TCCR0A {
     WGM00  = 0,
     WGM01  = 1,
@@ -383,7 +362,8 @@ pub enum TCCR0A {
 }
 
 /// TC0 Control Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x25, write=0x45, size=8)]
 pub enum TCCR0B {
     CS00  = 0,
     CS01  = 1,
@@ -394,7 +374,8 @@ pub enum TCCR0B {
 }
 
 /// Counter value register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x26, write=0x46, size=8)]
 pub enum TCNT0 {
     TCNT00 = 0,
     TCNT01 = 1,
@@ -407,7 +388,8 @@ pub enum TCNT0 {
 }
 
 /// Timer/Counter1 Interrupt Flag Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x16, write=0x36, size=8)]
 pub enum TIFR1 {
     TOV1  = 0,
     OCF1A = 1,
@@ -416,7 +398,8 @@ pub enum TIFR1 {
 }
 
 /// Timer/Counter1 Interrupt Mask Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x6F, size=8)]
 pub enum TIMSK1 {
     TOIE1  = 0,
     OCIE1A = 1,
@@ -425,7 +408,8 @@ pub enum TIMSK1 {
 }
 
 /// Timer/Counter1 Control Register A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x80, size=8)]
 pub enum TCCR1A {
     WGM10  = 0,
     WGM11  = 1,
@@ -436,7 +420,8 @@ pub enum TCCR1A {
 }
 
 /// Timer/Counter1 Control Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x81, size=8)]
 pub enum TCCR1B {
     CS10  = 0,
     CS11  = 1,
@@ -448,7 +433,8 @@ pub enum TCCR1B {
 }
 
 /// Timer/Counter2 Control Register A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB0, size=8)]
 pub enum TCCR2A {
     WGM20  = 0,
     WGM21  = 1,
@@ -459,7 +445,8 @@ pub enum TCCR2A {
 }
 
 /// Timer/Counter2 Control Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB1, size=8)]
 pub enum TCCR2B {
     CS20  = 0,
     CS21  = 1,
@@ -469,8 +456,9 @@ pub enum TCCR2B {
     FOC2A = 7,
 }
 
-/// Timer/Counter1 Low
-#[derive(Clone, Copy)]
+/// Timer / Counter1
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x84, size=16)]
 pub enum TCNT1L {
     TCNT1L0 = 0,
     TCNT1L1 = 1,
@@ -480,23 +468,19 @@ pub enum TCNT1L {
     TCNT1L5 = 5,
     TCNT1L6 = 6,
     TCNT1L7 = 7,
-}
-
-/// Timer/Counter1 High
-#[derive(Clone, Copy)]
-pub enum TCNT1H {
-    TCNT1H0 = 0,
-    TCNT1H1 = 1,
-    TCNT1H2 = 2,
-    TCNT1H3 = 3,
-    TCNT1H4 = 4,
-    TCNT1H5 = 5,
-    TCNT1H6 = 6,
-    TCNT1H7 = 7,
+    TCNT1H0 = 8,
+    TCNT1H1 = 9,
+    TCNT1H2 = 10,
+    TCNT1H3 = 11,
+    TCNT1H4 = 12,
+    TCNT1H5 = 13,
+    TCNT1H6 = 14,
+    TCNT1H7 = 15,
 }
 
 /// Timer 0 Output Compare Register A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x27, write=0x47, size=8)]
 pub enum OCR0A {
     OCR0A0 = 0,
     OCR0A1 = 1,
@@ -509,7 +493,8 @@ pub enum OCR0A {
 }
 
 /// Timer 0 Output Compare Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x28, write=0x48, size=8)]
 pub enum OCR0B {
     OCR0B0 = 0,
     OCR0B1 = 1,
@@ -521,60 +506,53 @@ pub enum OCR0B {
     OCR0B7 = 7,
 }
 
-/// Timer 1 Output Compare Register A Low
-#[derive(Clone, Copy)]
-pub enum OCR1AL {
-    OCR0A0 = 0,
-    OCR0A1 = 1,
-    OCR0A2 = 2,
-    OCR0A3 = 3,
-    OCR0A4 = 4,
-    OCR0A5 = 5,
-    OCR0A6 = 6,
-    OCR0A7 = 7,
+/// Timer 1 Output Compare Register A
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x88, size=16)]
+pub enum OCR1A {
+    OCR0A0  = 0,
+    OCR0A1  = 1,
+    OCR0A2  = 2,
+    OCR0A3  = 3,
+    OCR0A4  = 4,
+    OCR0A5  = 5,
+    OCR0A6  = 6,
+    OCR0A7  = 7,
+    OCR0B8  = 8,
+    OCR0B9  = 9,
+    OCR0B10 = 10,
+    OCR0B11 = 11,
+    OCR0B12 = 12,
+    OCR0B13 = 13,
+    OCR0B14 = 14,
+    OCR0B15 = 15,
 }
 
-/// Timer 1 Output Compare Register A High
-#[derive(Clone, Copy)]
-pub enum OCR1AH {
-    OCR0B8  = 0,
-    OCR0B9  = 1,
-    OCR0B10 = 2,
-    OCR0B11 = 3,
-    OCR0B12 = 4,
-    OCR0B13 = 5,
-    OCR0B14 = 6,
-    OCR0B15 = 7,
-}
-
-/// Timer 1 Output Compare Register B Low
-#[derive(Clone, Copy)]
-pub enum OCR1BL {
-    OCR0A0 = 0,
-    OCR0A1 = 1,
-    OCR0A2 = 2,
-    OCR0A3 = 3,
-    OCR0A4 = 4,
-    OCR0A5 = 5,
-    OCR0A6 = 6,
-    OCR0A7 = 7,
-}
-
-/// Timer 1 Output Compare Register B High
-#[derive(Clone, Copy)]
-pub enum OCR1BH {
-    OCR0B8  = 0,
-    OCR0B9  = 1,
-    OCR0B10 = 2,
-    OCR0B11 = 3,
-    OCR0B12 = 4,
-    OCR0B13 = 5,
-    OCR0B14 = 6,
-    OCR0B15 = 7,
+/// Timer 1 Output Compare Register B
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x8A, size=16)]
+pub enum OCR1B {
+    OCR0A0  = 0,
+    OCR0A1  = 1,
+    OCR0A2  = 2,
+    OCR0A3  = 3,
+    OCR0A4  = 4,
+    OCR0A5  = 5,
+    OCR0A6  = 6,
+    OCR0A7  = 7,
+    OCR0B8  = 8,
+    OCR0B9  = 9,
+    OCR0B10 = 10,
+    OCR0B11 = 11,
+    OCR0B12 = 12,
+    OCR0B13 = 13,
+    OCR0B14 = 14,
+    OCR0B15 = 15,
 }
 
 /// Timer 2 Output Compare Register A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB3, size=8)]
 pub enum OCR2A {
     OCR2A0 = 0,
     OCR2A1 = 1,
@@ -587,7 +565,8 @@ pub enum OCR2A {
 }
 
 /// Timer 2 Output Compare Register B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB4, size=8)]
 pub enum OCR2B {
     OCR2B0 = 0,
     OCR2B1 = 1,
@@ -600,37 +579,35 @@ pub enum OCR2B {
 }
 
 /// Timer 0 Interrupt Mask Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x6E, size=8)]
 pub enum TIMSK0 {
     TOIE0 = 0,
     OCIEA = 1,
     OCIEB = 2,
 }
 
-/// USART Baud Rate Register Low
-#[derive(Clone, Copy)]
-pub enum UBRR0L {
-    UBRR00 = 0,
-    UBRR01 = 1,
-    UBRR02 = 2,
-    UBRR03 = 3,
-    UBRR04 = 4,
-    UBRR05 = 5,
-    UBRR06 = 6,
-    UBRR07 = 7,
-}
-
-/// USART Baud Rate Register High
-#[derive(Clone, Copy)]
-pub enum UBRR0H {
-    UBRR08  = 0,
-    UBRR09  = 1,
-    UBRR010 = 2,
-    UBRR011 = 3,
+/// USART Baud Rate Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xC4, size=16)]
+pub enum UBRR0 {
+    UBRR00  = 0,
+    UBRR01  = 1,
+    UBRR02  = 2,
+    UBRR03  = 3,
+    UBRR04  = 4,
+    UBRR05  = 5,
+    UBRR06  = 6,
+    UBRR07  = 7,
+    UBRR08  = 8,
+    UBRR09  = 9,
+    UBRR010 = 10,
+    UBRR011 = 11,
 }
 
 /// USART Control and Status Register 0 A
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xC0, size=8)]
 pub enum UCSR0A {
     MPCM0 = 0,
     U2X0  = 1,
@@ -643,7 +620,8 @@ pub enum UCSR0A {
 }
 
 /// USART Control and Status Register 0 B
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xC1, size=8)]
 pub enum UCSR0B {
     TXB80  = 0,
     RXB80  = 1,
@@ -656,7 +634,8 @@ pub enum UCSR0B {
 }
 
 /// USART Control and Status Register 0 C
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xC2, size=8)]
 pub enum UCSR0C {
     UCPOL0  = 0,
     UCSZ00  = 1,
@@ -669,7 +648,8 @@ pub enum UCSR0C {
 }
 
 /// USART I/O Data Register 0
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xC6, size=8)]
 pub enum UDR0 {
     UDR00 = 0,
     UDR01 = 1,
@@ -681,20 +661,14 @@ pub enum UDR0 {
     UDR07 = 7,
 }
 
-/// ADC Data Register Low
-#[derive(Clone, Copy)]
-pub enum ADCL {
-
-}
-
-/// ADC Data Register High
-#[derive(Clone, Copy)]
-pub enum ADCH {
-    
-}
+/// ADC Data Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0x77, size=16)]
+pub enum ADC {}
 
 /// TWI Status Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB9, size=8)]
 pub enum TWSR {
     TWPS0 = 0,
     TWPS1 = 1,
@@ -706,7 +680,8 @@ pub enum TWSR {
 }
 
 /// TWI Data Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xBB, size=8)]
 pub enum TWDR {
     TWD0 = 0,
     TWD1 = 1,
@@ -719,7 +694,8 @@ pub enum TWDR {
 }
 
 /// TWI Control Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xBC, size=8)]
 pub enum TWCR {
     TWIE  = 0,
     TWEN  = 2,
@@ -731,7 +707,8 @@ pub enum TWCR {
 }
 
 /// TWI Bit Rate Register
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xB8, size=8)]
 pub enum TWBR {
     TWBR0 = 0,
     TWBR1 = 1,
@@ -743,8 +720,9 @@ pub enum TWBR {
     TWBR7 = 7,
 }
 
-/// TWI (Slave) Address Register
-#[derive(Clone, Copy)]
+/// TWI (Peripheral) Address Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(addr=0xBA, size=8)]
 pub enum TWAR {
     TWGCE = 0,
     TWA0  = 1,
@@ -756,63 +734,10 @@ pub enum TWAR {
     TWA6  = 7,
 }
 
-register!(
-    SREG[0x3F],
-    ADCSRA[0x7A], 
-    ADCSRB[0x7B], 
-    ADMUX[0x7C], 
-    PINB[0x23], 
-    DDRB[0x24], 
-    PORTB[0x25],
-    PINC[0x26],
-    DDRC[0x27],
-    PORTC[0x28],
-    PIND[0x29],
-    DDRD[0x2A],
-    PORTD[0x2B],
-    MCUCR[0x55],
-    PRR[0x64],
-    GRCCR[0x43],
-    TIFR0[0x35],
-    TCCR0A[0x44],
-    TCCR0B[0x45],
-    TCNT0[0x46],
-    TIFR1[0x36],
-    TIMSK1[0x6F],
-    TCCR1A[0x80],
-    TCCR1B[0x81],
-    TCCR2A[0xB0],
-    TCCR2B[0xB1],
-    TCNT1L[0x84],
-    TCNT1H[0x85],
-    OCR0A[0x47],
-    OCR0B[0x48],
-    OCR1AL[0x88],
-    OCR1AH[0x89],
-    OCR1BL[0x8A],
-    OCR1BH[0x8B],
-    OCR2A[0xB3],
-    OCR2B[0xB4],
-    TIMSK0[0x6E],
-    UBRR0L[0xC4],
-    UBRR0H[0xC5],
-    UCSR0A[0xC0],
-    UCSR0B[0xC1],
-    UCSR0C[0xC2],
-    UDR0[0xC6],
-    ADCL[0x78],
-    ADCH[0x79],
-    TWSR[0xB9],
-    TWDR[0xBB],
-    TWCR[0xBC],
-    TWBR[0xB8],
-    TWAR[0xBA],
-);
-
 /// Port B maps to pins `D13`-`D8`,
 /// Port C maps to pins `A6`-`A0`,
 /// Port D maps to pins `D7`-`D0`
-pub enum PinReg<B: Register, C: Register, D: Register> {
+pub enum PinReg<B: Register<u8>, C: Register<u8>, D: Register<u8>> {
     B(B),
     C(C),
     D(D),
@@ -825,7 +750,7 @@ pub type DDRx = PinReg<DDRB, DDRC, DDRD>;
 /// Defines the state of Output pins on port `x`
 pub type PORTx = PinReg<PORTB, PORTC, PORTD>;
 
-impl<B: Register, C: Register, D: Register> PinReg<B, C, D> {
+impl<B: Register<u8>, C: Register<u8>, D: Register<u8>> PinReg<B, C, D> {
     pub unsafe fn set(&self) {
         match self {
             Self::B(bit) => bit.set(),
