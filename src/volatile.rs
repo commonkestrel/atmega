@@ -29,7 +29,7 @@ impl<T: Copy> Volatile<T> {
         interrupts::without(State::Restore, || unsafe { write_volatile(self.0.get(), value); });
     }
 
-    /// Passes the current value into the 
+    /// Passes the current value into the function and stores the return value.
     pub fn operate<F: FnMut(T) -> T>(&self, mut operator: F) {
         interrupts::without(State::Restore, || unsafe { write_volatile(self.0.get(), operator(read_volatile(self.0.get()))) });
     }
@@ -42,6 +42,8 @@ impl<T: Copy> Volatile<T> {
 
     /// Passes the data of type `T` and passes it into the given function as `&T`.
     /// Allows for reading of inner data without copying or cloning the inner data to a new area in memory.
+    /// 
+    /// Disables interrupts during call.
     pub fn as_deref<F, R>(&self, mut operation: F) -> R
     where F: FnMut(&T) -> R
     {
@@ -52,6 +54,8 @@ impl<T: Copy> Volatile<T> {
     
     /// Passes the data of type `T` and passes it into the given function as `&mut T`.
     /// Allows the changing of the inner data without reading and overwriting all contents.
+    /// 
+    /// Disables interrupts during call.
     pub fn as_mut<F, R>(&self, mut operation: F) -> R
     where F: FnMut(&mut T) -> R
     {
