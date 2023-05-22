@@ -3,6 +3,7 @@
 #![no_std]
 #![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg, exclusive_range_pattern, maybe_uninit_uninit_array, const_maybe_uninit_uninit_array)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![allow(overflowing_literals, arithmetic_overflow)]
 #![warn(missing_docs)]
 
 pub mod allocator;
@@ -19,9 +20,8 @@ pub mod serial;
 pub mod timing;
 pub mod volatile;
 pub mod wiring;
-
-#[cfg(any(feature = "interrupt-macro", doc))]
-#[doc(cfg(feature = "interrupt-macro"))]
+pub mod math;
+//pub mod hardwareserial;
 pub use atmega_macros::interrupt;
 
 #[doc(hidden)]
