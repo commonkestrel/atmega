@@ -10,7 +10,8 @@
 //! Initializes the USART to a baud rate of 9600 and transmits "hello world"
 
 use crate::constants::CPU_FREQUENCY;
-use crate::registers::{ UBRR0H, UBRR0L, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
+use crate::registers::{ UBRR0, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
+#[cfg(feature = "serial-print")]
 use core::fmt::Write;
 
 #[cfg(any(feature = "serial-buffer", doc))]
@@ -33,8 +34,7 @@ impl Serial {
         let ubrr = ((CPU_FREQUENCY / (16*baud) as u64)-1) as u16;
         unsafe {
             // Write baud rate to UBRR
-            UBRR0H::write(((ubrr >> 8) & 0x0F) as u8);
-            UBRR0L::write((ubrr & 0xFF) as u8);
+            UBRR0::write(ubrr);
 
             // Set async
             UCSR0C::UMSEL00.clear();
@@ -114,6 +114,7 @@ impl Serial {
     }
 }
 
+#[cfg(feature = "serial-print")]
 impl Write for Serial {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
@@ -135,6 +136,7 @@ impl Write for Serial {
 /// println!("{} ", var);
 /// ```
 #[macro_export]
+#[cfg(feature = "serial-print")]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::serial::_print(format_args!($($arg)*)));
 }
@@ -150,6 +152,7 @@ macro_rules! print {
 /// println!("var = {}", var);
 /// ```
 #[macro_export]
+#[cfg(feature = "serial-print")]
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
@@ -157,6 +160,7 @@ macro_rules! println {
 
 #[doc(hidden)]
 #[allow(unused_must_use)]
+#[cfg(feature = "serial-print")]
 pub fn _print(args: ::core::fmt::Arguments) {
     // Calling unwrap adds about 300 bytes, which is not necessary with no reason to panic
     (Serial{}).write_fmt(args);
