@@ -69,7 +69,7 @@ pub fn enable() {
 }
 
 
-/// Status of the Status Register
+/// Status of the Status Register (SREG)
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Status(pub(crate) u8);
 
