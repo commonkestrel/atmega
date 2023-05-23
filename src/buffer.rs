@@ -131,6 +131,12 @@ impl<T: Copy, const SIZE: usize> Iterator for Buffer<T, SIZE> {
     }
 }
 
+impl<T: Copy, const SIZE: usize> Default for Buffer<T, SIZE> {
+    fn default() -> Self {
+        Buffer::new()
+    }
+}
+
 /// Creates a buffer and writes the provided data.
 /// Equivalent to the [`std::vec!`] macro for [`std::vec::Vec`].
 /// 
