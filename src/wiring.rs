@@ -218,7 +218,7 @@ impl From<Pin> for Registers {
 }
 
 impl Registers {
-    fn pinx(&self) -> PINx {
+    pub(crate) fn pinx(&self) -> PINx {
         match self {
             Self::B(offset) => {
                 match offset {
@@ -261,7 +261,7 @@ impl Registers {
         }
     }
 
-    fn ddrx(&self) -> DDRx {
+    pub(crate) fn ddrx(&self) -> DDRx {
         match self {
             Self::B(offset) => {
                 match offset {
@@ -304,7 +304,7 @@ impl Registers {
         }
     }
 
-    fn portx(&self) -> PORTx {
+    pub(crate) fn portx(&self) -> PORTx {
         match self {
             Self::B(offset) => {
                 match offset {
