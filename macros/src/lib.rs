@@ -307,6 +307,24 @@ pub fn derive_register(item: TokenStream) -> TokenStream {
         quote::quote!{}
     };
 
+    let default = if let syn::Data::Enum(body) = input.data {
+        body.variants.iter().find_map(|variant| {
+            if variant.ident.to_string() == "None".to_string() {
+                Some(quote::quote!{
+                    impl Default for #ident {
+                        fn default() -> Self {
+                            Self::None
+                        }
+                    }
+                })
+            } else {
+                None
+            }
+        }).unwrap_or(quote::quote!{})
+    } else {
+        return syn::Error::new(input.span(), "Register can only be implemented for enums").to_compile_error().into();
+    };
+
     quote::quote!{
         impl Into<#register_type> for #ident {
             fn into(self) -> #register_type {
@@ -320,5 +338,6 @@ pub fn derive_register(item: TokenStream) -> TokenStream {
         }
         
         #bitwise
+        #default
     }.into()
 }
