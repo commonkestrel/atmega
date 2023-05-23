@@ -68,8 +68,10 @@ pub fn enable() {
     unsafe { asm!("sei"); }
 }
 
+
 /// Status of the Status Register
-pub struct Status(u8);
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Status(pub(crate) u8);
 
 /// Disables global interrupts
 #[inline(always)]
