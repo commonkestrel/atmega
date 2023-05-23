@@ -1,3 +1,4 @@
+#![allow(non_upper_case_globals)]
 //!
 
 use core::arch::asm;
@@ -7,11 +8,13 @@ use crate::wiring::{ self, Pin };
 use crate::registers::{ Register, SPCR, EIMSK, SREG, SPDR, SPSR };
 use crate::interrupts;
 use crate::constants::CPU_FREQUENCY;
+use crate::buffer::Buffer;
+use crate::buf;
 
-const MOSI: Pin = Pin::D11;
-const MISO: Pin = Pin::D12;
-const SCK:  Pin = Pin::D13;
-const SS:   Pin = Pin::D10;
+pub const MOSI: Pin = Pin::D11;
+pub const MISO: Pin = Pin::D12;
+pub const SCK:  Pin = Pin::D13;
+pub const SS:   Pin = Pin::D10;
 
 const SPI_MODE_MASK: u8 = 0x0C; // CPOL = bit 3, CPHA = bit 2 on SPCR
 const SPI_CLOCK_MASK: u8 = 0x03; // SPR1 = bit 1, SPR0 = bit 0 on SPCR
@@ -21,7 +24,7 @@ static initialized: Volatile<usize> = Volatile::new(0);
 static interrupt_mode: Volatile<InterruptMode> = Volatile::new(InterruptMode::Mode0);
 static interrupt_mask: Volatile<u8> = Volatile::new(0);
 
-static interrupt_save: Volatile<Option<u8>> = Volatile::new(None);
+static interrupt_save: Volatile<u8> = Volatile::new(0);
 
 /// Defines the clock polarity and phase.
 /// Only used in `interrupt_mode`
@@ -225,12 +228,12 @@ pub fn begin_transaction(settings: SPISettings) {
     interrupt_save.as_mut(|save| {
         if interrupt_mode.as_deref(|mode| *mode == InterruptMode::Mode0) {
             unsafe {
-                *save = Some(EIMSK::read());
+                *save = EIMSK::read();
                 EIMSK::operate(|eimsk| eimsk & !interrupt_mask.read());
                 SREG::write(sreg);
             }
         } else {
-            interrupt_save.write(Some(sreg));
+            *save = sreg;
         }
     });
 }
@@ -288,3 +291,39 @@ pub fn transfer16(data: u16) -> u16 {
 
     out_lsb as u16 & ((out_msb as u16) << 8)
 }
+
+/// Writes the contents of a [`Buffer`] to the SPI bus.
+/// Returns the recieved contents in a [`Buffer`] of the same `SIZE`.
+pub fn transfer_all<const SIZE: usize>(buf: Buffer<u8, SIZE>) -> Buffer<u8, SIZE> {
+    let mut out = buf![];
+
+    for byte in buf {
+        unsafe {
+            SPDR::write(byte);
+            while SPSR::SPIF.is_clear() {}
+            out.write(SPDR::read());
+        }
+    }
+
+    out
+}
+
+/// After performing a group of transfers and releasing the chip select
+/// signal, this function allows others to access the SPI bus.
+pub fn end_transaction() {
+    interrupt_mode.as_deref(|mode| {
+        if *mode != InterruptMode::Mode0 {
+            let sreg = interrupts::disable();
+            if *mode == InterruptMode::Mode1 {
+                unsafe {
+                    EIMSK::write(interrupt_save.read());
+                    interrupts::restore(sreg);
+                }
+            } else {
+                unsafe { SREG::write(interrupt_save.read()); }
+            }
+        }
+    });
+}
+
+
