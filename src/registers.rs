@@ -7,15 +7,6 @@ use core::{ ptr::{ write_volatile, read_volatile }, ops, cmp };
 
 use atmega_macros::Register;
 
-/// The bit value of the passed value.
-/// Expands to `1 << val`.
-#[macro_export]
-macro_rules! bv {
-    ($reg: expr) => {
-        1 << ($reg as ($reg as $crate::registers::Register)::SIZE)
-    }
-}
-
 /// Quick trait to allow for using zero and one in a generic way.
 /// ONLY used in `Register`.
 pub trait Integer: Sized + Clone + Copy + Into<Self> + Default
@@ -145,6 +136,7 @@ pub enum SREG {
     H = 5,
     T = 6,
     I = 7,
+    None,
 }
 
 /// ADC Control and Status Register A
@@ -159,6 +151,7 @@ pub enum ADCSRA {
     ADATE = 5,
     ADSC  = 6,
     ADEN  = 7,
+    None,
 }
 
 /// ADC Control and Status Register B
@@ -169,6 +162,7 @@ pub enum ADCSRB {
     ADTS1 = 1,
     ADTS2 = 2,
     ACME  = 6,
+    None,
 }
 
 /// ADC Multiplexer Selection Register
@@ -182,6 +176,7 @@ pub enum ADMUX {
     ADLAR = 5,
     REFS0 = 6,
     REFS1 = 7,
+    None,
 }
 
 /// Port B Input Pins Address
@@ -196,6 +191,7 @@ pub enum PINB {
     PINB5 = 5,
     PINB6 = 6,
     PINB7 = 7,
+    None,
 }
 
 /// Port B Data Direction Register
@@ -210,6 +206,7 @@ pub enum DDRB {
     DDRB5 = 5,
     DDRB6 = 6,
     DDRB7 = 7,
+    None,
 }
 
 /// Port B Data Register
@@ -224,6 +221,7 @@ pub enum PORTB {
     PORTB5 = 5,
     PORTB6 = 6,
     PORTB7 = 7,
+    None,
 }
 
 /// Port C Input Pins Address
@@ -237,6 +235,7 @@ pub enum PINC {
     PINC4 = 4,
     PINC5 = 5,
     PINC6 = 6,
+    None,
 }
 
 /// Port C Data Direction Register
@@ -250,6 +249,7 @@ pub enum DDRC {
     DDRC4 = 4,
     DDRC5 = 5,
     DDRC6 = 6,
+    None,
 }
 
 /// Port C Data Register
@@ -263,6 +263,7 @@ pub enum PORTC {
     PORTC4 = 4,
     PORTC5 = 5,
     PORTC6 = 6,
+    None,
 }
 
 /// Port D Input Pins Address
@@ -277,6 +278,7 @@ pub enum PIND {
     PIND5 = 5,
     PIND6 = 6,
     PIND7 = 7,
+    None,
 }
 
 /// Port D Data Direction Register
@@ -291,6 +293,7 @@ pub enum DDRD {
     DDRD5 = 5,
     DDRD6 = 6,
     DDRD7 = 7,
+    None,
 }
 
 /// Port D Data Register
@@ -305,6 +308,7 @@ pub enum PORTD {
     PORTD5 = 5,
     PORTD6 = 6,
     PORTD7 = 7,
+    None,
 }
 
 /// MCU Control Register
@@ -316,6 +320,7 @@ pub enum MCUCR {
     PUD   = 4,
     BODSE = 5,
     BODS  = 6,
+    None,
 }
 
 /// Power Reduction Register
@@ -329,6 +334,7 @@ pub enum PRR {
     PRTIM0   = 5,
     PRTIM2   = 6,
     PRTWI0   = 7,
+    None,
 }
 
 /// General TC Control Register
@@ -338,6 +344,7 @@ pub enum GTCCR {
     PSRSYNC = 0,
     PSRASY  = 1,
     TSM     = 7,
+    None,
 }
 
 /// TC0 Interrupt Flag Register
@@ -347,6 +354,7 @@ pub enum TIFR0 {
     TOV0  = 0,
     OCF0A = 1,
     OCF0B = 2,
+    None,
 }
 
 /// TC0 Control Register B
@@ -359,6 +367,7 @@ pub enum TCCR0A {
     COM0B1 = 5,
     COM0A0 = 6,
     COM0A1 = 7,
+    None,
 }
 
 /// TC0 Control Register B
@@ -371,6 +380,7 @@ pub enum TCCR0B {
     WGM02 = 3,
     FOC0B = 6,
     FOC0A = 7,
+    None,
 }
 
 /// Counter value register
@@ -385,6 +395,7 @@ pub enum TCNT0 {
     TCNT05 = 5,
     TCNT06 = 6,
     TCNT07 = 7,
+    None,
 }
 
 /// Timer/Counter1 Interrupt Flag Register
@@ -395,6 +406,7 @@ pub enum TIFR1 {
     OCF1A = 1,
     OCF1B = 2,
     ICF1  = 5,
+    None,
 }
 
 /// Timer/Counter1 Interrupt Mask Register
@@ -405,6 +417,7 @@ pub enum TIMSK1 {
     OCIE1A = 1,
     OCIE1B = 2,
     ICIE1  = 5,
+    None,
 }
 
 /// Timer/Counter1 Control Register A
@@ -417,6 +430,7 @@ pub enum TCCR1A {
     COM1B1 = 5,
     COM1A0 = 6,
     COM1A1 = 7,
+    None,
 }
 
 /// Timer/Counter1 Control Register B
@@ -430,6 +444,7 @@ pub enum TCCR1B {
     WGM13 = 4,
     ICES1 = 6,
     ICNC1 = 7,
+    None,
 }
 
 /// Timer/Counter2 Control Register A
@@ -442,6 +457,7 @@ pub enum TCCR2A {
     COM2B1 = 5,
     COM2A0 = 6,
     COM2A1 = 7,
+    None,
 }
 
 /// Timer/Counter2 Control Register B
@@ -454,6 +470,7 @@ pub enum TCCR2B {
     WGM22 = 3,
     FOC2B = 6,
     FOC2A = 7,
+    None,
 }
 
 /// Timer / Counter1
@@ -476,6 +493,7 @@ pub enum TCNT1L {
     TCNT1H5 = 13,
     TCNT1H6 = 14,
     TCNT1H7 = 15,
+    None,
 }
 
 /// Timer 0 Output Compare Register A
@@ -490,6 +508,7 @@ pub enum OCR0A {
     OCR0A5 = 5,
     OCR0A6 = 6,
     OCR0A7 = 7,
+    None,
 }
 
 /// Timer 0 Output Compare Register B
@@ -504,6 +523,7 @@ pub enum OCR0B {
     OCR0B5 = 5,
     OCR0B6 = 6,
     OCR0B7 = 7,
+    None,
 }
 
 /// Timer 1 Output Compare Register A
@@ -526,6 +546,7 @@ pub enum OCR1A {
     OCR0B13 = 13,
     OCR0B14 = 14,
     OCR0B15 = 15,
+    None,
 }
 
 /// Timer 1 Output Compare Register B
@@ -548,6 +569,7 @@ pub enum OCR1B {
     OCR0B13 = 13,
     OCR0B14 = 14,
     OCR0B15 = 15,
+    None,
 }
 
 /// Timer 2 Output Compare Register A
@@ -562,6 +584,7 @@ pub enum OCR2A {
     OCR2A5 = 5,
     OCR2A6 = 6,
     OCR2A7 = 7,
+    None,
 }
 
 /// Timer 2 Output Compare Register B
@@ -576,6 +599,7 @@ pub enum OCR2B {
     OCR2B5 = 5,
     OCR2B6 = 6,
     OCR2B7 = 7,
+    None,
 }
 
 /// Timer 0 Interrupt Mask Register
@@ -585,6 +609,7 @@ pub enum TIMSK0 {
     TOIE0 = 0,
     OCIEA = 1,
     OCIEB = 2,
+    None,
 }
 
 /// USART Baud Rate Register
@@ -603,6 +628,7 @@ pub enum UBRR0 {
     UBRR09  = 9,
     UBRR010 = 10,
     UBRR011 = 11,
+    None,
 }
 
 /// USART Control and Status Register 0 A
@@ -617,6 +643,7 @@ pub enum UCSR0A {
     UDRE0 = 5,
     TXC0  = 6,
     RXC0  = 7,
+    None,
 }
 
 /// USART Control and Status Register 0 B
@@ -631,6 +658,7 @@ pub enum UCSR0B {
     UDRIE0 = 5,
     TXCIE0 = 6,
     RXCIE0 = 7,
+    None,
 }
 
 /// USART Control and Status Register 0 C
@@ -644,7 +672,8 @@ pub enum UCSR0C {
     UPM00   = 4,
     UPM01   = 5,
     UMSEL00 = 6,
-    UMSEL01 = 7
+    UMSEL01 = 7,
+    None,
 }
 
 /// USART I/O Data Register 0
@@ -659,12 +688,15 @@ pub enum UDR0 {
     UDR05 = 5,
     UDR06 = 6,
     UDR07 = 7,
+    None,
 }
 
 /// ADC Data Register
 #[derive(Clone, Copy, PartialEq, Register)]
 #[register(addr=0x77, size=16)]
-pub enum ADC {}
+pub enum ADC {
+    None,
+}
 
 /// TWI Status Register
 #[derive(Clone, Copy, PartialEq, Register)]
@@ -677,6 +709,7 @@ pub enum TWSR {
     TWS5 = 5,
     TWS6 = 6,
     TWS7 = 7,
+    None,
 }
 
 /// TWI Data Register
@@ -691,6 +724,7 @@ pub enum TWDR {
     TWD5 = 5,
     TWD6 = 6,
     TWD7 = 7,
+    None,
 }
 
 /// TWI Control Register
@@ -704,6 +738,7 @@ pub enum TWCR {
     TWSTA = 5,
     TWEA  = 6,
     TWINT = 7,
+    None,
 }
 
 /// TWI Bit Rate Register
@@ -718,6 +753,7 @@ pub enum TWBR {
     TWBR5 = 5,
     TWBR6 = 6,
     TWBR7 = 7,
+    None,
 }
 
 /// TWI (Peripheral) Address Register
@@ -732,13 +768,50 @@ pub enum TWAR {
     TWA4  = 5,
     TWA5  = 6,
     TWA6  = 7,
+    None,
 }
 
+/// External Interrupt Mask Register
 #[derive(Clone, Copy, PartialEq, Register)]
 #[register(read=0x1D, write=0x3D, size=8)]
 pub enum EIMSK {
     INT0 = 0,
     INT1 = 1,
+    None,
+}
+
+/// SPI Control Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x2C, write=0x4C, size=8)]
+pub enum SPCR {
+    SPR0 = 0,
+    SPR1 = 1,
+    CPHA = 2,
+    CPOL = 3,
+    MSTR = 4,
+    DORD = 5,
+    SPE  = 6,
+    SPIE = 7,
+    None,
+}
+
+/// SPI Data Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x2E, write=0x4E, size=8)]
+pub enum SPDR {
+    LSB = 0,
+    MSB = 7,
+    None,
+}
+
+/// SPI Status Register
+#[derive(Clone, Copy, PartialEq, Register)]
+#[register(read=0x2E, write=0x4E, size=8)]
+pub enum SPSR {
+    SPI2X = 0,
+    WCOL  = 6,
+    SPIF  = 7,
+    None,
 }
 
 /// Port B maps to pins `D13`-`D8`,
