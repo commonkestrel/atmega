@@ -137,14 +137,23 @@ impl<T: Copy, const SIZE: usize> Default for Buffer<T, SIZE> {
     }
 }
 
+impl<T: Copy, const SIZE: usize> From<T> for Buffer<T, SIZE> {
+    fn from(value: T) -> Self {
+        crate::buf![value]
+    }
+}
+
 /// Creates a buffer and writes the provided data.
 /// Equivalent to the [`std::vec!`] macro for [`std::vec::Vec`].
 /// 
 /// Will ignore values if there are more passed than the buffer's max length.
 #[macro_export]
 macro_rules! buf {
+    () => {
+        Buffer::new()
+    };
     ($($arg:expr)*) => {{
-        let buf = Buffer::new();
+        let mut buf = Buffer::new();
         $(
             buf.write($arg);
         )*
