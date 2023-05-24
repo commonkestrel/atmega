@@ -11,14 +11,21 @@ use crate::constants::CPU_FREQUENCY;
 use crate::buffer::Buffer;
 use crate::buf;
 
+/// Default `MOSI` pin.
 pub const MOSI: Pin = Pin::D11;
+/// Default `MISO` pin.
 pub const MISO: Pin = Pin::D12;
+/// Default `SCK` pin.
 pub const SCK:  Pin = Pin::D13;
+/// Default `SS` pin.
 pub const SS:   Pin = Pin::D10;
 
-const SPI_MODE_MASK: u8 = 0x0C; // CPOL = bit 3, CPHA = bit 2 on SPCR
-const SPI_CLOCK_MASK: u8 = 0x03; // SPR1 = bit 1, SPR0 = bit 0 on SPCR
-const SPI_2XCLOCK_MASK: u8 = 0x01;  // SPI2X = bit 0 on SPSR
+/// CPOL = bit 3, CPHA = bit 2 on SPCR
+const SPI_MODE_MASK: u8 = 0x0C; 
+/// SPR1 = bit 1, SPR0 = bit 0 on SPCR
+const SPI_CLOCK_MASK: u8 = 0x03; 
+/// SPI2X = bit 0 on SPSR
+const SPI_2XCLOCK_MASK: u8 = 0x01;  
 
 static initialized: Volatile<usize> = Volatile::new(0);
 static interrupt_mode: Volatile<InterruptMode> = Volatile::new(InterruptMode::Mode0);
@@ -41,6 +48,7 @@ static interrupt_save: Volatile<u8> = Volatile::new(0);
 /// 
 /// More information on [Wikipedia](https://en.wikipedia.org/wiki/Serial_Peripheral_Interface#Clock_polarity_and_phase)
 #[derive(PartialEq, Clone, Copy)]
+#[allow(dead_code)]
 enum InterruptMode {
     /// `CPOL`= 0, `CPHA`= 0
     Mode0 = 0,
@@ -88,19 +96,24 @@ pub fn end() {
     })
 }
 
-enum Interrupt {
+pub enum Interrupt {
     INT0,
     INT1,
-    None,
+    Other,
 }
 
-fn using_interrupt(interrupt: Interrupt) {
+/// If SPI is used from within an interrupt, this function registers
+/// that interrupt with the SPI library, so [`begin_transaction()`] can
+/// prevent conflicts.  The input `interrupt` is the interrupt used
+/// with `attach_interrupt()`.  If SPI is used from a different interrupt
+/// (eg, a timer), interrupt should be [`Interrupt::Other`].
+pub fn using_interrupt(interrupt: Interrupt) {
     interrupt_mask.as_mut(|mask| {
         use Interrupt::*;
         *mask |= match interrupt {
-            INT0 => 0x01,
-            INT1 => 0x02,
-            None => {
+            INT0  => 0x01,
+            INT1  => 0x02,
+            Other => {
                 interrupt_mode.write(InterruptMode::Mode2);
                 0x00
             },
@@ -114,7 +127,7 @@ fn using_interrupt(interrupt: Interrupt) {
     });
 }
 
-fn not_using_interrupt(interrupt: Interrupt) {
+pub fn not_using_interrupt(interrupt: Interrupt) {
     if interrupt_mode.as_deref(|mode| *mode == InterruptMode::Mode2) {
         return;
     }
@@ -123,7 +136,7 @@ fn not_using_interrupt(interrupt: Interrupt) {
         *mask &= !match interrupt {
             INT0 => 0x01,
             INT1 => 0x02,
-            None => 0x00,
+            Other => 0x00,
         };
 
         if *mask == 0 {
@@ -141,7 +154,7 @@ pub enum DataMode {
 }
 
 impl DataMode {
-    pub fn mask(self) -> u8 {
+    const fn mask(self) -> u8 {
         use DataMode::*;
         match self {
             Mode0 => 0x00,
@@ -152,7 +165,8 @@ impl DataMode {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
+#[derive_const(PartialEq)]
 pub enum BitOrder {
     LSBFirst,
     MSBFirst,
@@ -164,10 +178,9 @@ pub struct SPISettings {
 }
 
 impl SPISettings {
-
-
+    /// Contructs a new [`SPISettings`] with the given settings.
     #[inline]
-    pub fn new(clock: u32, bit_order: BitOrder, data_mode: DataMode) -> Self {
+    pub const fn new(clock: u32, bit_order: BitOrder, data_mode: DataMode) -> Self {
         // Clock settings are defined as follows. Note that this shows SPI2X
         // inverted, so the bits form increasing numbers. Also note that
         // fosc/64 appears twice
@@ -202,7 +215,7 @@ impl SPISettings {
             0x07
         } ^ 0x01; // Invert the SPI2X bit.
 
-        let spcr = SPCR::SPE.bv() | SPCR::MSTR.bv() | if bit_order == BitOrder::LSBFirst { SPCR::DORD.bv() } else { 0 } | 
+        let spcr = SPCR::SPE as u8 | SPCR::MSTR as u8 | if bit_order == BitOrder::LSBFirst { SPCR::DORD as u8 } else { 0 } | 
                     (data_mode.mask() & SPI_MODE_MASK) | ((clock_div >> 1) & SPI_CLOCK_MASK);
         let spsr = clock_div | SPI_2XCLOCK_MASK;
 
@@ -325,5 +338,3 @@ pub fn end_transaction() {
         }
     });
 }
-
-
