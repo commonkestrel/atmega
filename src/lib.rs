@@ -1,7 +1,19 @@
 //! A fast, easy, recognizable interface for the ATmega328p
 
 #![no_std]
-#![feature(lang_items, asm_experimental_arch, abi_avr_interrupt, error_in_core, doc_cfg, exclusive_range_pattern, maybe_uninit_uninit_array, const_maybe_uninit_uninit_array, core_intrinsics)]
+#![feature(lang_items, 
+    asm_experimental_arch, 
+    abi_avr_interrupt, 
+    error_in_core, 
+    doc_cfg, 
+    exclusive_range_pattern, 
+    maybe_uninit_uninit_array, 
+    const_maybe_uninit_uninit_array, 
+    core_intrinsics,
+    derive_const,
+    const_trait_impl,
+    const_discriminant,
+)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![allow(overflowing_literals, arithmetic_overflow)]
 #![warn(missing_docs)]
