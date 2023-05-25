@@ -4,6 +4,14 @@
 
 use crate::registers::*;
 
+/// The built-in LED that most Arduino boards have.
+/// This constant is correct on the following Arduino boards:
+/// - Arduino Uno
+/// - Arduino Nano
+/// - Arduino Pro
+/// - Arduino Pro Mini
+pub const LED_BUILTIN: Pin = Pin::D13;
+
 /// Initializes timers for PWM
 pub fn _init() {
     unsafe {
