@@ -11,7 +11,7 @@ struct State {
 }
 
 fn setup() -> State {
-    pin_mode(Pin::D9, PinMode::OUTPUT);
+    pin_mode(Pin::D9, PinMode::Output);
     State { analog: 0, direction: true }
 }
 

@@ -233,7 +233,7 @@ impl<const LENGTH: usize> Neopixel<LENGTH> {
     /// Configure the NeoPixel pin for output.
     pub fn begin(&mut self) {
         if self.pin != Pin::D0 {
-            pin_mode(self.pin, PinMode::OUTPUT);
+            pin_mode(self.pin, PinMode::Output);
             digital_write(self.pin, false);
         }
         self.begun = true;

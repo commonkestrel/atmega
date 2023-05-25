@@ -6,7 +6,7 @@ use atmega::prelude::*;
 run!(setup, run);
 
 fn setup() {
-    pin_mode(Pin::D9, PinMode::OUTPUT);
+    pin_mode(Pin::D9, PinMode::Output);
     Serial::begin(9600);
 }
 

@@ -54,7 +54,7 @@ The atmega prelude includes important functions and macros, like `digital_write(
 Next we need to add a `setup` function and initialize the pin the LED will be connected to:
 ```rust
 fn setup() {
-    pin_mode(Pin::D9, PinMode::OUTPUT);
+    pin_mode(Pin::D9, PinMode::Output);
 }
 ```
 In this example we are using pin D9 for the LED, and we initialize it to output.
@@ -91,7 +91,7 @@ use atmega::prelude::*;
 run!(setup, run);
 
 fn setup() {
-    pin_mode(Pin::D9, PinMode::OUTPUT);
+    pin_mode(Pin::D9, PinMode::Output);
 }
 
 fn run() {

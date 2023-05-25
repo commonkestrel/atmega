@@ -170,13 +170,50 @@ impl core::fmt::Display for Pin {
     }
 }
 
+/// Describes how a pin is configured to behave.
 #[derive(Debug, Clone)]
-#[allow(missing_docs)]
 #[allow(non_camel_case_types)]
 pub enum PinMode {
-    INPUT,
-    INPUT_PULLUP,
-    OUTPUT,
+    /// `ATmega328p` pins default to inputs, so they don't need to be explicitly declared as inputs with pinMode()
+    /// when you're using them as inputs. Pins configured this way are said to be in a high-impedance state.
+    /// Input pins make extremely small demands on the circuit that they are sampling, equivalent to a
+    /// series resistor of 100 megohm in front of the pin. This means that it takes very little current
+    /// to move the input pin from one state to another.
+    /// 
+    /// This also means however, that pins configured as [`PinMode::Input`] with nothing connected to them,
+    /// or with wires connected to them that are not connected to other circuits, will report seemingly 
+    /// random changes in pin state, picking up electrical noise from the environment, 
+    /// or capacitively coupling the state of a nearby pin.
+    Input,
+    /// There are pull-up resistors built into the Atmega chip that can be accessed from software with [`PinMode::InputPullup`].
+    /// This effectively inverts the behavior of the INPUT mode, where HIGH means the sensor is off, and LOW means the sensor is on.
+    /// 
+    /// On the `ATMega328p`, the value of this pull-up resistor is guaranteed to be between 20kΩ and 50kΩ.
+    /// 
+    /// When connecting a sensor to a pin configured with [`PinMode::InputPullup`], the other end should be connected to ground.
+    /// In the case of a simple switch, this causes the pin to read [`HIGH`] when the switch is open, and [`LOW`] when the switch is pressed.
+    /// 
+    /// The pullup resistors provide enough current to dimly light an LED connected to a pin that has been configured as an input. 
+    /// If LEDs in a project seem to be working, but very dimly, this is likely what is going on.
+    /// 
+    /// The pullup resistors are controlled by the same registers (internal chip memory locations) that control whether a pin is [`HIGH`] or [`LOW`]. 
+    /// Consequently, a pin that is configured to have pullup resistors turned on when the pin is an INPUT, 
+    /// will have the pin configured as HIGH if the pin is then switched to an [`PinMode::Output`] with [`pin_mode()`]. 
+    /// This is not the same in reverse, however, as the pull-up is automatically turned off when switching to [`PinMode::Input`].
+    /// 
+    /// ## Note
+    /// If your board has a built-in LED, the pin that this is connected to will be harder to use as a digital input than the other 
+    /// digital pins because it has an LED and resistor attached to it that's soldered to the board. If you enable the pins' internal 
+    /// pull-up resistor, it will hang at around 1.7V instead of the expected 5V because the onboard LED and series resistor pull the voltage level down, 
+    /// meaning it always returns [`LOW`]. If you must use the pin as a digital input, set its [`PinMode`] to [`PinMode::Input`] and use an external pull down resistor.
+    InputPullup,
+    /// Pins configured as [`PinMode::Output`] are said to be in a low-impedance state. 
+    /// This means that they can provide a substantial amount of current to other circuits. 
+    /// Atmega pins can source (provide positive current) or sink (provide negative current) up to 40 mA (milliamps) of current to other devices/circuits. 
+    /// 
+    /// This is enough current to brightly light up an LED (don't forget the series resistor), or run many sensors,
+    /// for example, but not enough current to run most relays, solenoids, or motors.
+    Output,
 }
 
 /// A high value, usually 5V
@@ -226,6 +263,7 @@ impl From<Pin> for Registers {
 }
 
 impl Registers {
+    /// Get the bit of the PINx register.
     pub(crate) fn pinx(&self) -> PINx {
         match self {
             Self::B(offset) => {
@@ -269,6 +307,7 @@ impl Registers {
         }
     }
 
+    /// Get the bit of the DDRx register.
     pub(crate) fn ddrx(&self) -> DDRx {
         match self {
             Self::B(offset) => {
@@ -312,6 +351,7 @@ impl Registers {
         }
     }
 
+    /// Get the bit of the PORTx register.
     pub(crate) fn portx(&self) -> PORTx {
         match self {
             Self::B(offset) => {
@@ -356,16 +396,19 @@ impl Registers {
     }
 }
 
-/// Sets the mode of the given pin to the given value.
+/// Sets the configuration of the pin to the given [`PinMode`]. 
 pub fn pin_mode(pin: Pin, value: PinMode) {
     let register = Registers::from(pin.clone()).ddrx();
     match value {
-        PinMode::INPUT => unsafe { 
+        PinMode::Input => unsafe { 
             register.clear();
             digital_write(pin, LOW);
         },
-        PinMode::OUTPUT => unsafe { register.set(); },
-        PinMode::INPUT_PULLUP => {
+        PinMode::Output => {
+            unsafe { register.set(); }
+            digital_write(pin, LOW);
+        },
+        PinMode::InputPullup => {
             unsafe { register.clear(); }
             digital_write(pin, HIGH);
         },
@@ -441,7 +484,7 @@ pub fn analog_read(pin: Pin) -> u16 {
 /// Sets the given PWM pin to the given value between 0-255.
 /// If the given pin does not have PWM this will call [`digital_write`] instead.
 pub fn analog_write(pin: Pin, value: u8) {
-    pin_mode(pin, PinMode::OUTPUT);
+    pin_mode(pin, PinMode::Output);
     if value == 0 {
         digital_write(pin, LOW);
     } else if value == 255 {

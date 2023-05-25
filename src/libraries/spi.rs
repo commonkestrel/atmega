@@ -69,15 +69,15 @@ pub fn begin() {
             wiring::digital_write(SS, true);
         }
 
-        wiring::pin_mode(SS, wiring::PinMode::OUTPUT);
+        wiring::pin_mode(SS, wiring::PinMode::Output);
 
         unsafe {
             SPCR::MSTR.set();
             SPCR::SPE.set();
         }
 
-        wiring::pin_mode(SCK, wiring::PinMode::OUTPUT);
-        wiring::pin_mode(MOSI, wiring::PinMode::OUTPUT);
+        wiring::pin_mode(SCK, wiring::PinMode::Output);
+        wiring::pin_mode(MOSI, wiring::PinMode::Output);
 
         *init += 1;
     });
