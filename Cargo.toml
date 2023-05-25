@@ -48,17 +48,16 @@ spi = []
 twowire = []
 
 [[example]]
+name = "blink"
+path = "examples/blink.rs"
+
+[[example]]
 name = "fade"
 path = "examples/fade.rs"
 
 [[example]]
 name = "serial"
 path = "examples/serial.rs"
-
-[[example]]
-name = "blink"
-path = "examples/blink.rs"
-required-features = ["serial-print"]
 
 [[example]]
 name = "interrupt"
