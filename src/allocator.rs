@@ -1,60 +1,41 @@
 extern crate alloc;
 
-use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::{null_mut, NonNull};
+use alloc::alloc::{ GlobalAlloc, Layout };
+use core::{ ptr::null_mut, mem };
 
-pub mod libc {
+mod libc {
     extern "C" {
         pub fn malloc(len: usize) -> *mut ();
         pub fn free(p: *mut ());
     }
 }
 
-const MALLOC_MARGIN: usize = 32;
-const HEAP_SIZE: usize = 512;
+pub struct Alloc;
 
-struct Heap {
-    pub used: usize,
-    pub free: FreeList,
-}
-
-struct FreeList {
-    pub first: Chunk,
-    pub bottom: *mut u8,
-    pub top: *mut u8,
-}
-
-struct Chunk {
-    pub size: usize,
-    pub next: Option<NonNull<u8>>,
-}
-
-impl FreeList {
-    pub const fn empty() -> FreeList {
-        FreeList {
-            first: Chunk {size: 0, next: None},
-            bottom: null_mut(),
-            top: null_mut(),
+unsafe impl GlobalAlloc for Alloc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let offset = layout.align() - 1 + mem::size_of::<*mut ()>();
+        let original = libc::malloc(layout.size() + offset);
+        if original.is_null() {
+            return null_mut();
         }
-    }
 
-    pub fn new(bottom: *mut u8, top: *mut u8) -> FreeList {
-        FreeList { bottom, top, first: Chunk {size: 0, next: None} }
-    }
-}
+        let aligned = (((original as usize) + offset) & !(layout.align() - 1)) as *mut u8;
 
-unsafe impl GlobalAlloc for FreeList {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+        let before = aligned.sub(mem::size_of::<*mut ()>()) as *mut *mut ();
+        *before = original;
+
         null_mut()
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        libc::free(ptr as *mut ());
+        let allocated = *((ptr as *mut *mut ()).sub(mem::size_of::<*mut ()>()));
+        libc::free(allocated);
     }
 }
 
-unsafe impl Send for FreeList {}
-unsafe impl Sync for FreeList {}
+unsafe impl Send for Alloc {}
+unsafe impl Sync for Alloc {}
 
 #[global_allocator]
-static ALLOCATOR: FreeList = FreeList::empty();
+pub static ALLOCATOR: Alloc = Alloc;
