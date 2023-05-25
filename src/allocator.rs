@@ -3,6 +3,13 @@ extern crate alloc;
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr::{null_mut, NonNull};
 
+pub mod libc {
+    extern "C" {
+        pub fn malloc(len: usize) -> *mut ();
+        pub fn free(p: *mut ());
+    }
+}
+
 const MALLOC_MARGIN: usize = 32;
 const HEAP_SIZE: usize = 512;
 
@@ -41,8 +48,8 @@ unsafe impl GlobalAlloc for FreeList {
         null_mut()
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc should not be called")
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        libc::free(ptr as *mut ());
     }
 }
 
