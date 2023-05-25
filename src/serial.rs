@@ -114,7 +114,8 @@ impl Serial {
     }
 }
 
-#[cfg(feature = "serial-print")]
+#[cfg(any(feature = "serial-print", doc))]
+#[doc(cfg(feature = "serial-print"))]
 impl Write for Serial {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         for c in s.chars() {
@@ -136,7 +137,8 @@ impl Write for Serial {
 /// println!("{} ", var);
 /// ```
 #[macro_export]
-#[cfg(feature = "serial-print")]
+#[cfg(any(feature = "serial-print", doc))]
+#[doc(cfg(feature = "serial-print"))]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::serial::_print(format_args!($($arg)*)));
 }
@@ -152,7 +154,8 @@ macro_rules! print {
 /// println!("var = {}", var);
 /// ```
 #[macro_export]
-#[cfg(feature = "serial-print")]
+#[cfg(any(feature = "serial-print", doc))]
+#[doc(cfg(feature = "serial-print"))]
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
@@ -160,7 +163,8 @@ macro_rules! println {
 
 #[doc(hidden)]
 #[allow(unused_must_use)]
-#[cfg(feature = "serial-print")]
+#[cfg(any(feature = "serial-print", doc))]
+#[doc(cfg(feature = "serial-print"))]
 pub fn _print(args: ::core::fmt::Arguments) {
     // Calling unwrap adds about 300 bytes, which is not necessary with no reason to panic
     (Serial{}).write_fmt(args);
