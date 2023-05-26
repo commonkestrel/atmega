@@ -1,3 +1,5 @@
+//! Global allocator implementation using `C`'s `malloc()` and `free()`.
+
 extern crate alloc;
 
 use alloc::alloc::{ GlobalAlloc, Layout };
@@ -10,6 +12,7 @@ mod libc {
     }
 }
 
+/// Global allocator implementation using `C`'s `malloc()` and `free()`.
 pub struct Alloc;
 
 unsafe impl GlobalAlloc for Alloc {
@@ -37,5 +40,6 @@ unsafe impl GlobalAlloc for Alloc {
 unsafe impl Send for Alloc {}
 unsafe impl Sync for Alloc {}
 
+/// Global allocator implementation using `C`'s `malloc()` and `free()`.
 #[global_allocator]
 pub static ALLOCATOR: Alloc = Alloc;

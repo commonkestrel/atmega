@@ -83,7 +83,7 @@ impl Interrupt {
 /// Available interrupts can be found at [`interrupts::Interrupt`](interrupts/enum.Interrupt.html).
 /// 
 /// # Requirements
-/// Requires the experimental "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
+/// Requires the experimental `abi_avr_interrupt` feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
 /// 
 /// # Example
 /// ```
@@ -157,11 +157,21 @@ pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     ).into()
 }
 
+/// Exports `main()` as the entry point of the program.
 /// 
+/// Must be called on a function with the signature `fn main() -> !`.
+/// 
+/// The program will execute after initializing the timers and pins.
 #[proc_macro_attribute]
 pub fn entry(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut f: syn::ItemFn = syn::parse(item).expect("#[entry] must be used on a function");
     let fnspan = f.span();
+
+    if !attr.is_empty() {
+        return syn::parse::Error::new(Span::call_site(), "This macro accepts no arguments")
+            .to_compile_error()
+            .into()
+    }
 
     let valid = f.sig.constness.is_none()
         && f.sig.unsafety.is_none()
@@ -260,7 +270,6 @@ struct RegisterAttr {
     addr: Option<u16>,
     read: Option<u16>,
     write: Option<u16>,
-    
 }
 
 #[proc_macro_derive(Register, attributes(register))]

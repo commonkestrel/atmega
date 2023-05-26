@@ -1,3 +1,7 @@
+//! Driver for the nRF24L01.
+//! 
+//! Adapted from the [`RF24`](https://www.arduino.cc/reference/en/libraries/rf24/) Arduino library.
+
 use crate::libraries::spi::{ self, SPISettings, BitOrder, DataMode };
 use crate::buffer::Buffer;
 use crate::buf;

@@ -1,6 +1,6 @@
-//! Library for driving Adafruit NeoPixel addressable LEDs,
-//! FLORA RGB Smart Pixels and compatible devices -- WS2811, WS2812, WS2812B,
-//! SK6812, etc.
+//! Driver for Adafruit NeoPixel addressable LEDs,
+//! FLORA RGB Smart Pixels and compatible devices -- `WS2811`
+//! `WS2812`, `WS2812B`, `SK6812`, etc.
 //! 
 //! Adapted from the official [NeoPixel library](https://github.com/adafruit/Adafruit_NeoPixel) created by Adafruit
 
