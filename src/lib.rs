@@ -81,7 +81,9 @@ pub fn _init() {
 ///     State{ x: 0 }
 /// }
 /// 
-/// fn run(state: &mut State) {}
+/// fn run(state: &mut State) {
+///     state.x += 1;
+/// }
 /// ```
 /// 
 /// This allows you to modify values between iterations without worrying about
