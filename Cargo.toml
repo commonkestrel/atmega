@@ -19,7 +19,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 maintenance = { status = "actively-developed" }
 
 [profile.dev]
-opt-level = 2
+opt-level = "z"
+codegen-units = 1
 lto = true
 panic = "abort"
 
@@ -42,6 +43,8 @@ millis = []
 serial-buffer = []
 
 serial-print = []
+
+alloc = []
 
 spi = []
 

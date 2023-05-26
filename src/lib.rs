@@ -18,6 +18,8 @@
 #![allow(overflowing_literals, arithmetic_overflow)]
 #![warn(missing_docs)]
 
+#[cfg(any(feature = "alloc", doc))]
+#[doc(cfg(feature = "alloc"))]
 pub mod allocator;
 pub mod bits;
 pub mod buffer;
@@ -86,22 +88,22 @@ pub fn _init() {
 /// global variables and data races.
 #[macro_export]
 macro_rules! run {
-    ($setup: ident, $loop: ident) => {
+    ($setup: ident, $run: ident) => {
         #[no_mangle]
         pub extern "C" fn main() -> ! {
             $crate::_init();
             
             $setup();
-            loop{ $loop() }
+            loop{ $run() }
         }
     };
-    ($setup: ident, $loop: ident, $state: tt) => {
+    ($setup: ident, $run: ident, $state: tt) => {
         #[no_mangle]
         pub extern "C" fn main() -> ! {
             $crate::_init();
             
             let mut state: $state = $setup();
-            loop{ $loop(&mut state) }
+            loop{ $run(&mut state) }
         }
     };
 }
