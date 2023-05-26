@@ -30,5 +30,5 @@ fn run(state: &mut State) {
         state.analog -= 1;
     }
 
-    delay(10);
+    delay_millis(10);
 }

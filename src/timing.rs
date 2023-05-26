@@ -3,6 +3,7 @@
 use core::arch::asm;
 use crate::constants::CPU_FREQUENCY;
 use crate::registers::{ Register, TCNT0 };
+use core::time::Duration;
 
 #[cfg(feature = "millis")]
 use crate::volatile::Volatile;
@@ -12,7 +13,7 @@ pub const MILLIS: u64 = 1_000;
 /// Microseconds in a second
 pub const MICROS: u64 = 1_000_000;
 
-/// Delay loop using a 16 bit counter, so upto 65536 iterations are possible.
+/// Delay loop using a 16 bit counter, so up to 65536 iterations are possible.
 /// (The value 65536 would have to passed as 0)
 /// The loop executes four CPU cycles per iteration,
 /// not including the overhead the compiler requires to setup the counter register pair.
@@ -30,7 +31,7 @@ pub fn _delay_loop(count: u16) {
     }
 }
 
-/// Delay the specified CPU cycles using _delay_loop()
+/// Wait the specified CPU cycles using _delay_loop()
 /// Has a precision of 4 cycles.
 #[inline(always)]
 pub fn delay_cycles(cycles: u64) {
@@ -48,17 +49,27 @@ pub fn delay_cycles(cycles: u64) {
     _delay_loop(last);
 }
 
-/// Delay the specified number of microseconds
-/// On boards with a clock speed of less than 4MHz the precision will be less than 1us
+/// Wait the specified number of microseconds
+/// On boards with a clock speed of less than 4MHz, the precision will be less than 1us.
 #[inline(always)]
 pub fn delay_micros(us: u64) {
     delay_cycles(us * (CPU_FREQUENCY/MICROS));
 }
 
-/// Delay the specified number of milliseconds
+/// Wait the specified number of milliseconds
 #[inline(always)]
-pub fn delay(ms: u64) {
+pub fn delay_millis(ms: u64) {
     delay_cycles(ms * (CPU_FREQUENCY/MILLIS));
+}
+
+/// Wait the specified [`Duration`].
+/// 
+/// On boards with a clock speed of less than 4MHz, the precision will be less than 1us.
+/// 
+/// The [`Duration`] will overflow with times greater than 584,542 years.
+#[inline(always)]
+pub fn delay(duration: Duration) {
+    delay_cycles((duration.as_micros() as u64) * (CPU_FREQUENCY/MICROS));
 }
 
 #[cfg(feature = "millis")]
