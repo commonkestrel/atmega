@@ -11,14 +11,12 @@
 
 use crate::constants::CPU_FREQUENCY;
 use crate::registers::{ UBRR0, UCSR0A, UCSR0B, UCSR0C, UDR0, Register };
-#[cfg(feature = "serial-print")]
+#[cfg(any(feature = "serial-print", doc))]
 use core::fmt::Write;
 
 #[cfg(any(feature = "serial-buffer", doc))]
-#[doc(cfg(feature = "serial-buffer"))]
 use crate::buffer::Buffer;
 #[cfg(any(feature = "serial-buffer", doc))]
-#[doc(cfg(feature = "serial-buffer"))]
 use crate::volatile::Volatile;
 
 #[cfg(any(feature = "serial-buffer", doc))]
@@ -127,14 +125,14 @@ impl Write for Serial {
 
 
 /// Prints to the serial output.
-/// `Serial::begin()` must have been called previously or the program will freeze.
+/// [`Serial::begin()`] must have been called previously or the program will freeze.
 /// Uses the same syntax as [`std::print`](https://doc.rust-lang.org/std/macro.print.html). See [`std::fmt`](https://doc.rust-lang.org/std/fmt/index.html) for more info.
 /// 
 /// # Example
 /// ```no_run
 /// Serial::begin(9600);
 /// let var = 42;
-/// println!("{} ", var);
+/// print!("{} ", var);
 /// ```
 #[macro_export]
 #[cfg(any(feature = "serial-print", doc))]
@@ -144,7 +142,7 @@ macro_rules! print {
 }
 
 /// Prints to the serial output, with a newline.
-/// `Serial::begin()` must have been called previously or the program will freeze.
+/// [`Serial::begin()`] must have been called previously or the program will freeze.
 /// Uses the same syntax as [`std::println`](https://doc.rust-lang.org/std/macro.println.html). See [`std::fmt`](https://doc.rust-lang.org/std/fmt/index.html) for more info.
 /// 
 /// # Example
