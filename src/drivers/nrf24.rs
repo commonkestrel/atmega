@@ -48,6 +48,29 @@ pub enum DataRate {
     High,
 }
 
+impl DataRate {
+    fn bv(&self) -> u8 {
+        match self {
+            DataRate::Low  => 0x03,
+            DataRate::Med  => 0x00,
+            DataRate::High => 0x05,
+        }
+    }
+
+    fn mask(&self) -> u8 {
+        1 << self.bv()
+    }
+}
+
+enum CRCLength {
+    /// No CRC checksum.
+    CRCDisabled,
+    /// 8-bit CRC checksum.
+    CRC8,
+    /// 16-bit CRC checksum.
+    CRC16,
+}
+
 pub struct RF24 {
     status: u8,
     ce_pin: Pin,
@@ -56,6 +79,9 @@ pub struct RF24 {
     payload_size: u8,
     pipe0_reading_address: [u8; 5],
     config_reg: u8, 
+    dynamic_payloads_enabled: bool,
+    tx_delay: u32,
+    cs_delay: u32,
 }
 
 impl RF24 {
@@ -68,6 +94,9 @@ impl RF24 {
             payload_size: 32,
             pipe0_reading_address: [0; 5],
             config_reg: 0,
+            dynamic_payloads_enabled: true,
+            tx_delay: 0,
+            cs_delay: 5,
         }
     }
 
@@ -80,6 +109,9 @@ impl RF24 {
             payload_size: 32,
             pipe0_reading_address: [0; 5],
             config_reg: 0,
+            dynamic_payloads_enabled: true,
+            tx_delay: 0,
+            cs_delay: 5,
         }
     }
 
@@ -134,4 +166,6 @@ impl RF24 {
 
         spi::end_transaction();
     }
+
+
 }
