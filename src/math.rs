@@ -42,7 +42,7 @@ mod cmath {
     }
 }
 
-/// Copy and pasted from Rust std
+/// Copy and pasted from Rust `std`.
 pub trait Float: Sized {
 	/// Returns the largest integer less than or equal to a number.
 	///

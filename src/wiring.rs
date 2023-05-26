@@ -5,6 +5,7 @@
 use crate::registers::*;
 
 /// The built-in LED that most Arduino boards have.
+/// 
 /// This constant is correct on the following Arduino boards:
 /// - Arduino Uno
 /// - Arduino Nano
@@ -188,7 +189,7 @@ pub enum PinMode {
     /// There are pull-up resistors built into the Atmega chip that can be accessed from software with [`PinMode::InputPullup`].
     /// This effectively inverts the behavior of the INPUT mode, where HIGH means the sensor is off, and LOW means the sensor is on.
     /// 
-    /// On the `ATMega328p`, the value of this pull-up resistor is guaranteed to be between 20kΩ and 50kΩ.
+    /// On the `ATmega328p`, the value of this pull-up resistor is guaranteed to be between 20kΩ and 50kΩ.
     /// 
     /// When connecting a sensor to a pin configured with [`PinMode::InputPullup`], the other end should be connected to ground.
     /// In the case of a simple switch, this causes the pin to read [`HIGH`] when the switch is open, and [`LOW`] when the switch is pressed.
