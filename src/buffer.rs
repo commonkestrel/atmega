@@ -2,6 +2,7 @@
 //! 
 //! This is an adaptation of the `USART_BUFFER` from [`avr_328p_usart`](https://github.com/johncobb/avr_328p_usart)
 
+
 use core::mem::MaybeUninit;
 
 /// Byte buffer of variable length.
@@ -70,7 +71,7 @@ impl<T: Copy, const SIZE: usize> Buffer<T, SIZE> {
     }
 
     /// Reads the byte at the front of the buffer.
-    /// Returns `None` if there is no data stored in the buffer.
+    /// Returns [`None`] if there is no data stored in the buffer.
     pub fn read(&mut self) -> Option<T> {
         // if the head isn't ahead of the tail, we don't have any characters
          if self.head == self.tail {
@@ -143,8 +144,9 @@ impl<T: Copy, const SIZE: usize> From<T> for Buffer<T, SIZE> {
     }
 }
 
-/// Creates a buffer and writes the provided data.
-/// Equivalent to the [`std::vec!`] macro for [`std::vec::Vec`].
+/// Creates an empty [`Buffer`] and writes the provided data.
+/// Equivalent to the [`vec!`](https://doc.rust-lang.org/std/macro.vec.html) 
+/// macro for [`Vec`](https://doc.rust-lang.org/std/vec/struct.Vec.html).
 /// 
 /// Will ignore values if there are more passed than the buffer's max length.
 #[macro_export]
