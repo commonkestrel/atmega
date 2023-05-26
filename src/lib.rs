@@ -34,7 +34,7 @@ pub mod volatile;
 pub mod wiring;
 pub mod math;
 //pub mod hardwareserial;
-pub use atmega_macros::interrupt;
+pub use atmega_macros::{ entry, interrupt };
 
 #[doc(hidden)]
 pub fn _init() {
@@ -42,9 +42,48 @@ pub fn _init() {
 }
 
 /// Takes two arguments, `setup()` and `run()`.
-/// `setup` is the same as `setup` in the Arduino language.
-/// `run` is the same as `loop` in the Arduino language.
+/// `setup()` is the same as `setup()` in the Arduino language.
+/// `run()` is the same as `loop()` in the Arduino language.
 /// 
+/// There are two ways to use this macro:
+/// ## Stateless
+/// The most basic way is the stateless way, where you just simply pass
+/// a `setup()` function and a `run()` function:
+/// 
+/// ```
+/// run!(setup, run);
+/// 
+/// fn setup() {}
+/// fn run() {}
+/// ```
+/// 
+/// This just runs `setup()` once, and then `run()` in a loop.
+/// 
+/// ## Stateful
+/// Rust makes mutable global variables very difficult to prevent data races,
+/// but this can make microcontroller programs more difficult than usual.
+/// 
+/// This crate attempts to fix this with the ability to pass a mutable state
+/// into your loop.
+/// 
+/// This is done like so:
+/// 
+/// ```
+/// run!(setup, run, State);
+/// 
+/// struct State {
+///     x: usize,
+/// }
+/// 
+/// fn setup() -> State {
+///     State{ x: 0 }
+/// }
+/// 
+/// fn run(state: &mut State) {}
+/// ```
+/// 
+/// This allows you to modify values between iterations without worrying about
+/// global variables and data races.
 #[macro_export]
 macro_rules! run {
     ($setup: ident, $loop: ident) => {
