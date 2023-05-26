@@ -13,7 +13,7 @@ use crate::registers::*;
 pub const LED_BUILTIN: Pin = Pin::D13;
 
 /// Initializes timers for PWM
-pub fn _init() {
+pub(crate) fn _init() {
     unsafe {
         // this needs to be called before setup() or some functions won't work there
         crate::interrupts::enable();
