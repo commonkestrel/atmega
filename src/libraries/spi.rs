@@ -165,8 +165,7 @@ impl DataMode {
     }
 }
 
-#[derive(Clone, Copy)]
-#[derive_const(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum BitOrder {
     LSBFirst,
     MSBFirst,

@@ -7,7 +7,7 @@
 use crate::registers::{ Register, TWSR, TWCR, TWBR, TWAR, TWDR };
 use crate::wiring::{ digital_write, Pin };
 use crate::constants::CPU_FREQUENCY;
-use crate::prelude::delay_micros;
+use crate::timing::delay_micros;
 use crate::volatile::Volatile;
 use crate::timing::micros;
 
