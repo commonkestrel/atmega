@@ -215,7 +215,7 @@ impl SPISettings {
             0x07
         } ^ 0x01; // Invert the SPI2X bit.
 
-        let spcr = SPCR::SPE as u8 | SPCR::MSTR as u8 | if bit_order == BitOrder::LSBFirst { SPCR::DORD as u8 } else { 0 } | 
+        let spcr = SPCR::SPE as u8 | SPCR::MSTR as u8 | if matches!(bit_order, BitOrder::LSBFirst) { SPCR::DORD as u8 } else { 0 } | 
                     (data_mode.mask() & SPI_MODE_MASK) | ((clock_div >> 1) & SPI_CLOCK_MASK);
         let spsr = clock_div | SPI_2XCLOCK_MASK;
 
