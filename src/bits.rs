@@ -62,6 +62,7 @@ pub fn from_bcd(num: u8) -> u8 {
 }
 
 /// Convers decimal to Binary Coded Decimal (BCD)
+#[inline(always)]
 pub fn from_dec(num: u8) -> u8 {
     (num/10 * 16) + (num % 10)
 }
