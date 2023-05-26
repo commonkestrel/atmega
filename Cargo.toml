@@ -68,3 +68,7 @@ required-features = ["interrupt-macro"]
 name = "ds1307"
 path = "examples/ds1307.rs"
 required-features = ["twowire"]
+
+[[example]]
+name = "entry"
+path = "examples/entry.rs"

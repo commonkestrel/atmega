@@ -3,6 +3,7 @@
 use darling::{ FromMeta, FromDeriveInput };
 use proc_macro::TokenStream;
 use proc_macro2::{ Span, Ident };
+use quote::quote;
 use syn::{ LitStr, Visibility, VisPublic, spanned::Spanned, token::Pub };
 
 #[repr(u8)]
@@ -79,14 +80,14 @@ impl Interrupt {
 }
 
 /// Exports the function as the matching interrupt handler.
-/// Available interrupts can be found at [`atmega::interrupts::Interrupt`].
+/// Available interrupts can be found at [`interrupts::Interrupt`](interrupts/enum.Interrupt.html).
 /// 
 /// # Requirements
 /// Requires the experimental "abi_avr_interrupt" feature, which can be enabled by adding `#![feature(abi_avr_interrupt)]` to the top of the file
 /// 
 /// # Example
 /// ```
-/// #[interrupt]
+/// #[atmega::interrupt]
 /// unsafe fn ANALOG_COMP() {
 ///     ...
 /// }
@@ -128,7 +129,7 @@ pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
         };
 
     if !valid {
-        return syn::parse::Error::new(fnspan, "#[interrupt] handlers must have the function signature unsafe fn() [-> (),-> !]")
+        return syn::parse::Error::new(f.sig.span(), "#[interrupt] handlers must have the function signature `unsafe fn() [-> (),-> !]`")
             .to_compile_error()
             .into()
     }
@@ -148,12 +149,55 @@ pub fn interrupt(attr: TokenStream, item: TokenStream) -> TokenStream {
     f.vis = Visibility::Public(VisPublic { pub_token: Pub(fnspan) });
     f.sig.abi = Some(syn::Abi { name: Some(LitStr::new("avr-interrupt", fnspan)), extern_token: syn::token::Extern { span: fnspan } });
 
-    quote::quote!(
+    quote!(
         #[doc(hidden)]
         #[allow(non_snake_case)]
         #[export_name = #vector]
         #f
     ).into()
+}
+
+/// 
+#[proc_macro_attribute]
+pub fn entry(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut f: syn::ItemFn = syn::parse(item).expect("#[entry] must be used on a function");
+    let fnspan = f.span();
+
+    let valid = f.sig.constness.is_none()
+        && f.sig.unsafety.is_none()
+        && matches!(f.vis, syn::Visibility::Inherited)
+        && f.sig.abi.is_none()
+        && f.sig.inputs.is_empty()
+        && f.sig.generics.params.is_empty()
+        && f.sig.generics.where_clause.is_none()
+        && f.sig.ident.to_string() == "main"
+        && match f.sig.output {
+            syn::ReturnType::Default => false,
+            syn::ReturnType::Type(_, ref ty) => match **ty {
+                syn::Type::Never(_) => true,
+                _ => false,
+            },
+        };
+
+    if !valid {
+        return syn::parse::Error::new(f.sig.span(), "#[entry] functions must have the function signature `fn main() -> !`")
+            .to_compile_error()
+            .into();
+    }
+
+    f.vis = Visibility::Public(VisPublic { pub_token: Pub(fnspan) });
+    f.sig.abi = Some(syn::Abi { name: Some(LitStr::new("C", fnspan)), extern_token: syn::token::Extern { span: fnspan } });
+
+    let syn::ItemFn{ attrs, vis, sig, block } = f;
+    let stmts = &block.stmts;
+    quote! {
+        #[no_mangle]
+        #(#attrs)*
+        #vis #sig {
+            atmega::_init();
+            #(#stmts)*
+        }
+    }.into()
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -169,11 +213,11 @@ impl Into<proc_macro2::TokenStream> for Size {
     fn into(self) -> proc_macro2::TokenStream {
         use Size::*;
         match self {
-            Byte => quote::quote!{u8},
-            Short => quote::quote!{u16},
-            Int => quote::quote!{u32},
-            Long => quote::quote!{u64},
-            Giant => quote::quote!{u128},
+            Byte => quote!{u8},
+            Short => quote!{u16},
+            Int => quote!{u32},
+            Long => quote!{u64},
+            Giant => quote!{u128},
         }
     }
 }
@@ -241,7 +285,7 @@ pub fn derive_register(item: TokenStream) -> TokenStream {
     let register_type: proc_macro2::TokenStream = attributes.size.into();
 
     let bitwise = if attributes.bitwise.unwrap_or(true) {
-        quote::quote!{
+        quote!{
             impl ops::BitAnd<#register_type> for #ident {
                 type Output = #register_type;
                 fn bitand(self, rhs: #register_type) -> Self::Output {
@@ -304,13 +348,13 @@ pub fn derive_register(item: TokenStream) -> TokenStream {
             }
         }
     } else {
-        quote::quote!{}
+        quote!{}
     };
 
     let default = if let syn::Data::Enum(body) = input.data {
         body.variants.iter().find_map(|variant| {
             if variant.ident.to_string() == "None".to_string() {
-                Some(quote::quote!{
+                Some(quote!{
                     impl Default for #ident {
                         fn default() -> Self {
                             Self::None
@@ -320,12 +364,12 @@ pub fn derive_register(item: TokenStream) -> TokenStream {
             } else {
                 None
             }
-        }).unwrap_or(quote::quote!{})
+        }).unwrap_or(quote!{})
     } else {
         return syn::Error::new(input.span(), "Register can only be implemented for enums").to_compile_error().into();
     };
 
-    quote::quote!{
+    quote!{
         impl Into<#register_type> for #ident {
             fn into(self) -> #register_type {
                 self as #register_type
