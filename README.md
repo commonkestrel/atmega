@@ -4,6 +4,10 @@ A fast, easy, recognizable interface for the ATmega328p.
 Provides many of the features of the Arduino language already used, with the benifit of Rust's memory safety and language features.
 Not quite finished, but this works well enough to make simple programs.
 
+## Warning
+This crate is still very much a work in progress,
+and some features are either unstable or do not work.
+
 ### Why should you use this?
 If you are looking for a high(ish) level, easy to use interface with the ATmega328p, this is the crate for you.
 This crate aims to provide easy, high-level interfaces to low-level operations without abstracting too much of the control logic away.
